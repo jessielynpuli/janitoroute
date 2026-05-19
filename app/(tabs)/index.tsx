@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Platform, View, Text, TouchableOpacity, StyleSheet, FlatList, Alert } from 'react-native';
-import { mockBins } from '../mockData'; // Adjust path based on your folder
+import {mockBins} from '@/components/mockData'; // Adjust path based on your folder
 import { Image } from 'expo-image';
 
 import { HelloWave } from '@/components/hello-wave';
