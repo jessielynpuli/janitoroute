@@ -1,0 +1,3 @@
+What it is: A utility closet for local automation tools that run on your computer, not on your mobile phone.
+
+What it contains: The default template includes reset-project.ts. This is a built-in Expo tool that wipes out the boilerplate screens if you want a totally blank slate. You can write custom node scripts here later if you need to bulk-upload sample graph layout coordinates to your database.
