@@ -15,7 +15,6 @@ export interface LandmarkInput {
     x_position: number;
     y_position: number;
     landmark_name: string;
-    icon_url?: string; //
 }
 
 //object for input areas 
