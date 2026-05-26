@@ -1,25 +1,35 @@
 import { Colors } from '@/constants/theme';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { s } from 'react-native-size-matters';
 
-// 1. Import your brand new reusable button component!
 import HelpButton from '@/components/HelpButton';
 import MenuButton from '@/components/MenuButton';
+import NodalGraph from '@/components/NodalGraph';
+
+// Import data types and mock database
+import { MOCK_DATABASE_BY_AREA, SupabaseLandmarkPayload } from '@/constants/mockData';
 
 export default function HomeScreen() {
-  
-  // 2. This is the action you want to happen when the button is clicked on THIS screen
-  const handleHelpPress = () => {
-    console.log('Help opened from the Home Screen!');
-  };
-const handleMenuPress = () => {
-    console.log('Menu opened from the Home Screen!');
-  };
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>("area-1");
+  const [mapData, setMapData] = useState<SupabaseLandmarkPayload[]>([]);
+
+  // Simulate an API data fetch whenever the selected Area changes
+  useEffect(() => {
+    if (selectedAreaId && MOCK_DATABASE_BY_AREA[selectedAreaId]) {
+      // Mimics running your: const data = await fetchMapDataByArea(selectedAreaId)
+      setMapData(MOCK_DATABASE_BY_AREA[selectedAreaId]);
+    } else {
+      setMapData([]);
+    }
+  }, [selectedAreaId]);
+
+  const handleHelpPress = () => console.log('Help opened!');
+  const handleMenuPress = () => console.log('Menu opened!');
 
   return (
     <View style={[styles.container, { backgroundColor: Colors.background }]}>
       
-      // Home Screen Header
       <View style={styles.header}>
         <MenuButton onPress={handleMenuPress} />
         <Text style={[styles.welcomeText, { color: Colors.text }]}>
@@ -28,14 +38,10 @@ const handleMenuPress = () => {
         <HelpButton onPress={handleHelpPress} />
       </View>
 
-      <View style={styles.centerContent}>
-        <Text style={[styles.welcomeText, { color: Colors.text }]}>
-          Currently Testing the App!
-        </Text>
+      <View style={styles.graphWrapper}>
+        {/* PASS THE DATA STATE DOWN TO THE GRAPH COMPONENT */}
+        <NodalGraph mapData={mapData} />
       </View>
-
-
-
     </View>
   );
 }
@@ -60,5 +66,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: s(20),
     marginTop: s(20)
+  },
+  graphWrapper: {
+    flex: 1,
+    margin: s(20),
   }
 });

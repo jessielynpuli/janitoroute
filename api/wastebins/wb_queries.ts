@@ -94,7 +94,7 @@ export const updateArea = async (areaId: string, updates: Partial<AreaInput>) =>
     return { success: true, data: data[0] };
 };
 
-// 5. Delete an area. Once na magdelete ba ng area, idedelete din ba nodes doon?
+// 5. Delete an area. Once na magdelete ba ng area, idedelete din ba nodes doon? Yes
 
 export const deleteArea = async (areaId: string) => {
     const { error } = await supabase
