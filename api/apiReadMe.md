@@ -24,6 +24,7 @@ api/
                                      - deleteWastebin() remove wastebin entirely
     └── report_queries.ts     #Functions
                                 - submitWastebinReport ()  checks the user, warn if spam, counts full reports, update the main wastebin if reports are 3 or more
+                                
                         
 ├── edges/               # 🌟 Feature Folder for Path Networks
 │   └── edges queries.ts             # Functions: 

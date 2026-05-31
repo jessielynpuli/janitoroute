@@ -6,6 +6,8 @@ import { supabase } from '../supabase';
 export interface WastebinInput {
   landmark_id: string;
   status: 'empty' | 'half-full' | 'full';
+  x_position: number;
+  y_position: number;
   description?: string; 
 }
 
@@ -52,6 +54,8 @@ export const fetchMapDataByArea = async (areaId: string) => {
       wastebins (
         wastebin_id,
         status,
+        x_position,
+        y_position,
         description
       )
     `)
@@ -94,7 +98,7 @@ export const updateArea = async (areaId: string, updates: Partial<AreaInput>) =>
     return { success: true, data: data[0] };
 };
 
-// 5. Delete an area. Once na magdelete ba ng area, idedelete din ba nodes doon? Yes
+// 5. Delete an area. Once na magdelete ba ng area, idedelete din ba nodes doon?
 
 export const deleteArea = async (areaId: string) => {
     const { error } = await supabase

@@ -2,7 +2,7 @@
 import { supabase } from '../supabase';
 
 export const submitWastebinReport = async (
-  wastebinId: number, 
+  wastebinId: string, 
   reportedStatus: string, 
   description?: string,
   photo_url?: string,
@@ -19,8 +19,8 @@ export const submitWastebinReport = async (
     .from('reports')
     .select('id')
     .eq('wastebin_id', wastebinId)
-    .eq('student_id', user.id)
-    .eq('reported_status', reportedStatus)
+    .eq('anon_user_id', user.id)
+    .eq('status', reportedStatus)
     .single();
 
   if (existingReport) {
@@ -53,7 +53,7 @@ export const submitWastebinReport = async (
     .from('reports')
     .select('*', { count: 'exact', head: true })
     .eq('wastebin_id', wastebinId)
-    .eq('reported_status', 'full');
+    .eq('status', 'full');
 
   if (countError) return { success: false, errorMessage: countError.message };
 
@@ -62,7 +62,7 @@ export const submitWastebinReport = async (
     await supabase
       .from('wastebins')
       .update({ status: 'full' })
-      .eq('id', wastebinId);
+      .eq('wastebin_id', wastebinId);
   }
 
   return { success: true };
@@ -80,9 +80,9 @@ const uploadReportPhoto = async (photo_url: string, anonUserId: string) => {
     const fileExt = photo_url.split('.').pop() || 'jpg';
     const fileName = `${anonUserId}/${Date.now()}.${fileExt}`;
 
-    // 3. Upload to your bucket (replace 'reports_photos' with your actual bucket name)
+    // 3. Upload to your bucket (replace 'photo_reports' with your actual bucket name)
     const { data, error } = await supabase.storage
-      .from('reports_photos')
+      .from('photo_reports')
       .upload(fileName, blob, {
         contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
       });
