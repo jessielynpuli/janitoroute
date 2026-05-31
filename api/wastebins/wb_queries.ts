@@ -6,6 +6,8 @@ import { supabase } from '../supabase';
 export interface WastebinInput {
   landmark_id: string;
   status: 'empty' | 'half-full' | 'full';
+  x_position: number;
+  y_position: number;
   description?: string; 
 }
 
@@ -52,6 +54,8 @@ export const fetchMapDataByArea = async (areaId: string) => {
       wastebins (
         wastebin_id,
         status,
+        x_position,
+        y_position,
         description
       )
     `)
