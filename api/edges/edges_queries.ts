@@ -1,11 +1,21 @@
 // api/edges/queries.ts
 import { supabase } from '../supabase';
 
+export type UIWeight = 'Adjacent' | 'Midway' | 'Remote';
+
+// 2. Map the strings to database integers
+export const WEIGHT_MAP: Record<UIWeight, number> = {
+  'Adjacent': 1,
+  'Midway': 2,
+  'Remote': 3,
+};
 export interface DBEdge {
   edge_id: number;
   from_node_id: string;
+  source_type: 'landmark' | 'wastebin';
   to_node_id: string;
-  weight: number; // 1 = Easy, 3 = Medium, 5 = Hard
+  target_type: 'landmark' | 'wastebin';
+  weight: number; // 1 = adjacent, 2 = midway, 3 = remote
 }
 
 /**
@@ -15,7 +25,7 @@ export interface DBEdge {
 export const fetchNetworkEdges = async (): Promise<DBEdge[]> => {
   const { data, error } = await supabase
     .from('edges')
-    .select('edge_id, from_node_id, to_node_id, weight');
+    .select('edge_id, from_node_id, source_type, to_node_id, target_type, weight');
 
   if (error) {
     console.error("Failed to fetch network edges:", error.message);
@@ -41,6 +51,27 @@ export const updateEdgeWeight = async (edgeId: number, newWeight: number) => {
 
   if (error) {
     console.error(`Failed to update edge ${edgeId}:`, error.message);
+    return { success: false, error };
+  }
+
+  return { success: true, data };
+};
+
+
+/**
+ * 3. INSERT NEW NETWORK EDGES (Bulk Insert)
+ * Runs when creating a landmark/trashbin that connects to existing nodes.
+ */
+export const insertNetworkEdges = async (newEdges: Omit<DBEdge, 'edge_id'>[]) => {
+  if (newEdges.length === 0) return { success: true, data: [] };
+
+  const { data, error } = await supabase
+    .from('edges')
+    .insert(newEdges)
+    .select();
+
+  if (error) {
+    console.error("Failed to insert network edges:", error.message);
     return { success: false, error };
   }
 

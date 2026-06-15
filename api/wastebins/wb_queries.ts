@@ -73,7 +73,8 @@ export const createArea = async (areaData: AreaInput) => {
     const { data, error } = await supabase
         .from('areas')
         .insert([areaData])
-        .select();
+        .select()
+        .single();
 
     if (error){
         console.error("Failed to create area:", error.message);
