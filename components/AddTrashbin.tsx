@@ -12,11 +12,11 @@ export const AddTrashbinButton: React.FC<AddTrashbinButtonProps> = ({
 }) => {
   return (
     <TouchableOpacity 
-      style ={styles.button} 
+      style={styles.button} 
       onPress={onPress} 
       activeOpacity={0.8}
     >
-      <Text style ={styles.text}>{title}</Text>
+      <Text style={styles.text}>{title}</Text>
     </TouchableOpacity>
   );
 };
@@ -36,13 +36,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    margin: 1,
   },
   text: {
-   padding: 5,
+    padding: 5,
     color: '#097000',
     fontSize: 17,
     fontFamily: 'Inter-Font',
     letterSpacing: 0.5,
   },
-}
-);
+});

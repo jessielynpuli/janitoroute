@@ -1,20 +1,17 @@
-import React, { useEffect, useState} from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Animated } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // import components
-import AreaDropdown, { DropdownItem } from '@/components/areaDropdown'; 
-import NodalGraph from '@/components/NodalGraph';
 import { AddAreaButton } from '@/components/addArea';
-import { AddLandmarkButton } from '@/components/addLandmark';
-import { AddTrashbinButton } from '@/components/AddTrashbin';
-import { RemoveButton } from '@/components/RemoveButton';
 import { AddDetailsModal, PopupType } from '@/components/AddDetailsModal';
+import { AddLandmarkButton } from '@/components/addLandmark';
+import { AddTrashbinButton } from '@/components/addTrashbin';
+import AreaDropdown, { DropdownItem } from '@/components/areaDropdown';
+import NodalGraph from '@/components/NodalGraph';
+import { RemoveButton } from '@/components/RemoveButton';
 
 //import api functions
-import { AreaInput, LandmarkInput, WastebinInput } from '@/api/wastebins/wb_queries';
-import { fetchAllAreas, fetchMapDataByArea, createArea, updateArea, deleteArea, } from '@/api/wastebins/wb_queries';
-import { createLandmark, updateLandmark, deleteLandmark } from '@/api/wastebins/wb_queries';
-import { createWastebin, fetchWastebinDetails, updateWastebin, deleteWastebin } from '@/api/wastebins/wb_queries';
-import { insertNetworkEdges, WEIGHT_MAP, UIWeight } from '@/api/edges/edges_queries';
+import { UIWeight } from '@/api/edges/edges_queries';
+import { AreaInput, createArea, deleteArea, fetchAllAreas, LandmarkInput, WastebinInput } from '@/api/wastebins/wb_queries';
 
 import { s } from 'react-native-size-matters';
 
@@ -177,6 +174,13 @@ const handleSavePayload = async (bundle: {
   loadAreas();
 }, []);
   // 2. Define your list data exactly matching your mockup
+  useEffect(() => {
+      if (selectedAreaId && MOCK_DATABASE_BY_AREA[selectedAreaId]) {
+        setMapData(MOCK_DATABASE_BY_AREA[selectedAreaId]);
+      } else {
+        setMapData([]);
+      }
+    }, [selectedAreaId]);
 
   // 3. Handle what happens when a user clicks an area
   const handleAreaSelect = async (item: DropdownItem) => {
@@ -323,11 +327,13 @@ const styles = StyleSheet.create({
     margin: s(5),
     marginHorizontal: 20,
   },
-  canvas: {
+canvas: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    flex: 1,           
+    alignSelf: 'stretch',
   },
   zoomControls: {
     position: 'absolute',
