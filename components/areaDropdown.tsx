@@ -11,8 +11,9 @@ export interface DropdownItem {
 // 2. Define the exact types for the Component's Props
 interface AreaDropdownProps {
   data: DropdownItem[];
+  //value: string | null;
   placeholder: string;
-  onSelect?: (item: DropdownItem) => void;
+  onSelect?: (item: any) => void;
   selectedValue: string | null;
 }
 
