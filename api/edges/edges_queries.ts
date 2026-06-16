@@ -10,7 +10,7 @@ export const WEIGHT_MAP: Record<UIWeight, number> = {
   'Remote': 3,
 };
 export interface DBEdge {
-  edge_id: number;
+  edge_id: string;
   from_node_id: string;
   source_type: 'landmark' | 'wastebin';
   to_node_id: string;
@@ -65,6 +65,10 @@ export const updateEdgeWeight = async (edgeId: number, newWeight: number) => {
 export const insertNetworkEdges = async (newEdges: Omit<DBEdge, 'edge_id'>[]) => {
   if (newEdges.length === 0) return { success: true, data: [] };
 
+  // Explicitly log the payload to catch 'null' IDs before they hit Supabase
+  console.log("Saving edges to Supabase:", newEdges);
+
+  
   const { data, error } = await supabase
     .from('edges')
     .insert(newEdges)

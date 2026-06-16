@@ -9,6 +9,7 @@ export interface WastebinInput {
   x_position: number;
   y_position: number;
   description?: string; 
+  updated_at?: string;
 }
 
 //object for input landmarks
@@ -17,11 +18,13 @@ export interface LandmarkInput {
     x_position: number;
     y_position: number;
     landmark_name: string;
+    updated_at?: string;
 }
 
 //object for input areas 
 export interface AreaInput {
     area_name: string;
+    updated_at?: string;
 }
 
 // ************************** AREA FUNCTIONS **************************
@@ -63,9 +66,9 @@ export const fetchMapDataByArea = async (areaId: string) => {
 
   if (error) {
     console.error("Error fetching map layout data:", error.message);
-    throw error;
+    return { success: false, error, data: [] };
   }
-  return data || [];
+  return { success: true, data };
 };
 
 // 3. Create an area
@@ -86,9 +89,14 @@ export const createArea = async (areaData: AreaInput) => {
 // 4. Edit an area. Name lang ba iedit? hehe
 
 export const updateArea = async (areaId: string, updates: Partial<AreaInput>) => {
-    const { data, error } = await supabase
+  const payloadWithTimestamp = {
+        ...updates,
+        updated_at: new Date().toISOString(), 
+    };  
+  
+  const { data, error } = await supabase
         .from('areas')
-        .update(updates)
+        .update(payloadWithTimestamp)
         .eq('area_id', areaId)
         .select();
 
@@ -127,7 +135,8 @@ export const createLandmark = async (landmarkData: LandmarkInput) => {
     const { data, error } = await supabase
         .from('landmarks')
         .insert([landmarkData]) 
-        .select();
+        .select()
+        .single();
     
     if (error) {
         console.error("Failed to create landmark:", error.message);
@@ -140,9 +149,14 @@ export const createLandmark = async (landmarkData: LandmarkInput) => {
 // 2. Update/Edit a landmark
 
 export const updateLandmark = async (landId: string, updates: Partial<LandmarkInput>) => {
-    const { data, error } = await supabase
+  const payloadWithTimestamp = {
+        ...updates,
+        updated_at: new Date().toISOString(), 
+    };    
+  
+  const { data, error } = await supabase
         .from ('landmarks')
-        .update(updates)
+        .update(payloadWithTimestamp)
         .eq('landmark_id', landId)
         .select();
     
@@ -157,16 +171,21 @@ export const updateLandmark = async (landId: string, updates: Partial<LandmarkIn
 // 3. Delete a landmark
 
 export const deleteLandmark = async ( landId: string ) => {
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('landmarks')
         .delete()
-        .eq('landmark_id', landId);
+        .eq('landmark_id', landId)
+        .select();
+
+        console.log("Supabase Delete Landmark Response Data Raw: ", data)
     
     if (error) {
         console.error("Failed to delete landmark:", error.message);
-        return{ success: false, error };
     }
-    return{ success: true };
+    
+    // If data array is empty, it means no rows met the filter requirements
+        const actuallyDeleted = data && data.length > 0;
+        return { success: !error && actuallyDeleted, error };        
 };
 
 
@@ -180,7 +199,8 @@ export const createWastebin = async (binData: WastebinInput) => {   //binData me
   const { data, error } = await supabase
     .from('wastebins') //wastebins table
     .insert([binData]) //landmark id, status, desc, photo url will be inserted
-    .select();
+    .select()
+    .single();
 
   if (error) {
     console.error("Failed to create wastebin:", error.message);
@@ -212,9 +232,14 @@ export const fetchWastebinDetails = async (binId: string) => {
  * Used by admins to fix text, or students to change status flags
  */
 export const updateWastebin = async (binId: string, updates: Partial<WastebinInput>) => {
+  const payloadWithTimestamp = {
+        ...updates,
+        updated_at: new Date().toISOString(), 
+    }; 
+  
   const { data, error } = await supabase
     .from('wastebins')
-    .update(updates)
+    .update(payloadWithTimestamp)
     .eq('wastebin_id', binId)
     .select();
 
@@ -229,16 +254,32 @@ export const updateWastebin = async (binId: string, updates: Partial<WastebinInp
  * 4. DELETE (Remove a wastebin entirely)
  */
 export const deleteWastebin = async (binId: string) => {
-  const { error } = await supabase
+  try {const { data, error } = await supabase
     .from('wastebins')
     .delete()
-    .eq('wastebin_id', binId);
+    .eq('wastebin_id', binId)
+    .select();
 
   if (error) {
     console.error("Failed to delete wastebin:", error.message);
     return { success: false, error };
   }
+
+  // If data comes back as an empty array [], it means Supabase found NOTHING to delete!
+    if (!data || data.length === 0) {
+      console.error(`SILENT FAILURE: Supabase could not find a wastebin with ID ${binId} to delete. Check your column name or RLS policies!`);
+      // We return false here so your frontend doesn't falsely clear the screen
+      return { success: false, error: new Error("Row not found or RLS blocked deletion.") }; 
+    }
+
+    console.log("Successfully deleted row from database:", data);
+    return { success: true };
+
   return { success: true };
+} catch (err) {
+        console.error("Network or API execution error during delete:", err);
+        return { success: false, error: err };
+    }
 };
 
 

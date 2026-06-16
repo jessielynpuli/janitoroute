@@ -4,6 +4,7 @@ import { TouchableOpacity, Text, StyleSheet, GestureResponderEvent } from 'react
 interface RemoveButtonProps {
   onPress?: (event: GestureResponderEvent) => void;
   title?: string;
+  isActive: boolean;
 }
 
 export const RemoveButton: React.FC<RemoveButtonProps> = ({ 
