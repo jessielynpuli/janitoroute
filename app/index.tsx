@@ -1,8 +1,8 @@
 import { Colors } from '@/constants/theme';
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Button } from 'react-native';
-import { s } from 'react-native-size-matters';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Button, StyleSheet, Text, View } from 'react-native';
+import { s } from 'react-native-size-matters';
 
 import HelpButton from '@/components/HelpButton';
 import MenuButton from '@/components/MenuButton';
@@ -10,11 +10,11 @@ import NodalGraph from '@/components/NodalGraph';
 import Sidebar from '@/components/SideBar';
 
 // Import data types and mock database
-import { MOCK_DATABASE_BY_AREA, SupabaseLandmarkPayload } from '@/constants/mockData';
+import { MOCK_DATABASE_BY_AREA, SupabaseLandmarkPayload } from '@/constants/interfaceData';
 type Role = 'ADMIN' | 'JANITOR' | 'GUEST';
 export default function HomeScreen() {
 
-  const [selectedAreaId, setSelectedAreaId] = useState<string | null>("area-1");
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>("1dcbb286-0d5f-4dd7-91a8-bcb39242815a");
   const [mapData, setMapData] = useState<SupabaseLandmarkPayload[]>([]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -49,6 +49,10 @@ export default function HomeScreen() {
       <Button 
         title="Test Admin View" 
         onPress={() => router.push('/(admin)/edit_map')} 
+      />
+            <Button 
+        title="Test Janitor View" 
+        onPress={() => router.push('/(janitor)/janitor')} 
       />
 
       {isSidebarOpen && (

@@ -15,14 +15,14 @@ export interface SupabaseLandmarkPayload {
 
 // Mock database keyed by area_id
 export const MOCK_DATABASE_BY_AREA: Record<string, SupabaseLandmarkPayload[]> = {
-  "area-1": [
+  "1dcbb286-0d5f-4dd7-91a8-bcb39242815a": [
     {
       landmark_id: 'node-l1',
       landmark_name: 'Science Hall',
       x_position: 100,
       y_position: 100,
       wastebins: [
-        { wastebin_id: 'node-b1', status: 'empty', description: 'Hallway Bin A', x_position: 60, y_position: 200 },
+        { wastebin_id: 'node-b1', status: 'full', description: 'Hallway Bin A', x_position: 60, y_position: 200 },
         { wastebin_id: 'node-b2', status: 'full', description: 'Courtyard Bin B', x_position: 160, y_position: 300 }
       ]
     },

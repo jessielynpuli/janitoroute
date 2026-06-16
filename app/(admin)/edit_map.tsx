@@ -15,7 +15,7 @@ import { AreaInput, createArea, deleteArea, fetchAllAreas, LandmarkInput, Wasteb
 
 import { s } from 'react-native-size-matters';
 
-import { MOCK_DATABASE_BY_AREA, SupabaseLandmarkPayload } from '@/constants/mockData';
+import { MOCK_DATABASE_BY_AREA, SupabaseLandmarkPayload } from '@/constants/interfaceData';
 
 
 export default function IndexScreen() {

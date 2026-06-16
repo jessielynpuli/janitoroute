@@ -1,13 +1,13 @@
-import React, { useEffect, useState} from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 // 1. Import your dropdown component (Adjust the folder path to where you saved it!)
-import AreaDropdown, { DropdownItem } from '@/components/areaDropdown'; 
+import AreaDropdown, { DropdownItem } from '@/components/areaDropdown';
 import NodalGraph from '@/components/NodalGraph';
 import { ReportButton } from '@/components/ReportButton';
 
 import { s } from 'react-native-size-matters';
 
-import { MOCK_DATABASE_BY_AREA, SupabaseLandmarkPayload } from '@/constants/mockData';
+import { MOCK_DATABASE_BY_AREA, SupabaseLandmarkPayload } from '@/constants/interfaceData';
 
 
 export default function IndexScreen() {
@@ -25,7 +25,7 @@ export default function IndexScreen() {
   
   // 2. Define your list data exactly matching your mockup
   const areaData: DropdownItem[] = [
-    { label: 'Area 1', value: 'area_1' },
+    { label: 'Area 1', value: 'area-1' },
     { label: 'Area 2', value: 'area_2' },
     { label: 'Area 3', value: 'area_3' },
     { label: 'Area 4', value: 'area_4' },
