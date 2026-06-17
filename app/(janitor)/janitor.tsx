@@ -3,6 +3,7 @@ import AreaDropdown from '@/components/areaDropdown';
 import NodalGraph from '@/components/NodalGraph';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BinStatusModal } from '@/components/BinStatusModal';
 
 import { MOCK_DATABASE_BY_AREA } from '@/constants/interfaceData';
 
@@ -11,10 +12,28 @@ export default function JanitorScreen() {
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [mapData, setMapData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [targetBinId, setTargetBinId] = useState<string | null>(null);
+    
   // Janitor Logic States
   const [startNodeId, setStartNodeId] = useState<string | null>(null);
   const [highlightedEdges, setHighlightedEdges] = useState<Array<{ from: string; to: string }>>([]);
+
+  const updateBinStatus = (binId: string, newStatus: string) => {
+  // Update local mapData state to trigger immediate re-render
+  setMapData(prevData => 
+    prevData.map(landmark => ({
+      ...landmark,
+      wastebins: landmark.wastebins.map((bin: any) => 
+        bin.wastebin_id === binId ? { ...bin, status: newStatus } : bin
+      )
+    }))
+  );
+  
+  // OPTIONAL: Add an API call here to persist to Supabase
+  // await updateWastebin(binId, { status: newStatus });
+};
 
   // 1. Initial Load: Fetch Areas
   useEffect(() => {
@@ -90,17 +109,48 @@ export default function JanitorScreen() {
     <View style={styles.container}>
       <AreaDropdown 
         data={areas.map(a => ({ label: a.area_name, value: a.area_id }))}
-        value={selectedAreaId}
-        onChange={(item) => setSelectedAreaId(item.value)}
-      />
+        placeholder="CHOOSE AREA"
+        selectedValue={selectedAreaId}
+        onSelect={(item: { label: string; value: string }) => setSelectedAreaId(item.value)}      />
       
       <View style={styles.graphWrapper}>
         <NodalGraph 
           mapData={mapData}
+          edges={[]}
+          isDeleteMode={false}
           highlightedEdges={highlightedEdges}
-          onNodePress={(id) => setStartNodeId(id)}
+          onNodePress={(id, isLandmark, nodeDetails) => {
+    // 1. If it's a landmark, just set it as the start node
+    if (isLandmark) {
+      setStartNodeId(id);
+      return;
+    } else {
+      setTargetBinId(id);
+      setModalVisible(true);
+    }
+
+    // 2. If it's a wastebin, show the toggle alert
+    Alert.alert(
+      "Update Bin Status",
+      `Current Status: ${nodeDetails.status}`,
+      [
+        { text: "Empty", onPress: () => updateBinStatus(id, 'empty') },
+        { text: "Half-Full", onPress: () => updateBinStatus(id, 'half-full') },
+        { text: "Full", onPress: () => updateBinStatus(id, 'full') },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
+  }}
         />
       </View>
+              <BinStatusModal 
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onSelect={(status) => {
+            if (targetBinId) updateBinStatus(targetBinId, status);
+            setModalVisible(false);
+          }}
+        />
 
       <TouchableOpacity style={styles.button} onPress={runBFS}>
         <Text style={styles.btnText}>Find Nearest Full Bin (BFS)</Text>

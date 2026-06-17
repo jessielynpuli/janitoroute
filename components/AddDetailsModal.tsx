@@ -22,6 +22,7 @@ interface AddDetailsModalProps {
     y_position?: number;
     area_id?: string;
     landmark_id?: string;
+    edit_node_id?: string;
   };
 
    // We pass existing nodes into the modal so the user can choose them from a list

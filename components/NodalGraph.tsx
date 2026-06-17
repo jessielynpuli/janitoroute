@@ -3,8 +3,46 @@ import React, { useMemo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
 
+// dbedge
+import {DBEdge} from '@/api/edges/edges_queries';
+export interface WastebinRow {
+
+  wastebin_id: string;
+
+  landmark_id?: string;
+
+  x_position: number;
+
+  y_position: number;
+
+  description?: string;
+
+  status: 'empty' | 'half-full' | 'full';
+
+}
+
+
+
+export interface LandmarkRow {
+
+  landmark_id: string;
+
+  area_id?: string;
+
+  x_position: number;
+
+  y_position: number;
+
+  landmark_name: string;
+
+  wastebins?: WastebinRow[];
+
+}
+
 interface NodalGraphProps {
-  mapData: SupabaseLandmarkPayload[];
+  mapData: LandmarkRow[];
+  edges: DBEdge[];
+  isDeleteMode: boolean;
   selectedNodeId?: string | null;
   // Added optional prop: defaults to empty array if not provided by screen
   highlightedEdges?: Array<{ from: string; to: string }>; 
@@ -31,7 +69,7 @@ export default function NodalGraph({
     const dictionary: Record<string, { x: number; y: number; isLandmark: boolean; name?: string; status?: string }> = {};
     mapData.forEach((landmark) => {
       dictionary[landmark.landmark_id] = { x: landmark.x_position, y: landmark.y_position, isLandmark: true, name: landmark.landmark_name };
-      landmark.wastebins.forEach((bin) => {
+      landmark.wastebins?.forEach((bin) => {
         dictionary[bin.wastebin_id] = { x: bin.x_position ?? landmark.x_position, y: bin.y_position ?? landmark.y_position, isLandmark: false, name: bin.description || 'Trashbin', status: bin.status || 'empty' };
       });
     });
@@ -45,7 +83,7 @@ export default function NodalGraph({
     <View style={styles.container}>
       <Svg style={StyleSheet.absoluteFillObject}>
         {mapData.map((landmark) => 
-          landmark.wastebins.map((bin) => {
+          landmark.wastebins?.map((bin) => {
             const startNode = nodeLookup[landmark.landmark_id];
             const endNode = nodeLookup[bin.wastebin_id];
 
