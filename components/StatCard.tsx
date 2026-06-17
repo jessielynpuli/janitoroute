@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     borderColor: '#708090',
     backgroundColor: '#B0C4DE',
     borderRadius: 4,
-    paddingTop: 25, // Leaves room for the badge
+    paddingTop: 25,
     paddingHorizontal: 15,
     paddingBottom: 15,
     minHeight: 180,

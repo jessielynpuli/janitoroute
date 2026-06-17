@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export const BottomNavBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   const BRAND_BLUE = '#1E56A0';

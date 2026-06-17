@@ -15,7 +15,7 @@ export default function NodalGraph({
   mapData, 
   selectedNodeId = null, 
   highlightedEdges = [], // Default to empty array
-  onNodePress 
+  onNodePress
 }: NodalGraphProps) {
 
   // Safety check

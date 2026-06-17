@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { useRouter, Tabs } from 'expo-router';
-import { useFonts } from 'expo-font';
-import { StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; 
+import { BottomNavBar } from '@/components/AdminBottomNavbar';
 import HelpButton from '@/components/HelpButton';
 import MenuButton from '@/components/MenuButton';
 import Sidebar from '@/components/SideBar';
-import { BottomNavBar } from '@/components/AdminBottomNavbar';
+import { useFonts } from 'expo-font';
+import { Tabs, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 
 import { s } from 'react-native-size-matters';
@@ -82,7 +81,7 @@ export default function AdminLayout() {
             if (newRole === 'GUEST') {
               router.replace('/');
             } else if (newRole === 'JANITOR') {
-              // router.replace('/(janitor)/tasks'); 
+              router.replace('/(janitor)/janitor'); 
             }
           }}
         />

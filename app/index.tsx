@@ -7,23 +7,25 @@ import { s } from 'react-native-size-matters';
 import HelpButton from '@/components/HelpButton';
 import MenuButton from '@/components/MenuButton';
 import NodalGraph from '@/components/NodalGraph';
+import { ReportStatusModal } from '@/components/ReportStatusModal';
 import Sidebar from '@/components/SideBar';
 
 // Import data types and mock database
 import { MOCK_DATABASE_BY_AREA, SupabaseLandmarkPayload } from '@/constants/interfaceData';
-type Role = 'ADMIN' | 'JANITOR' | 'GUEST';
-export default function HomeScreen() {
 
+type Role = 'ADMIN' | 'JANITOR' | 'GUEST';
+
+export default function HomeScreen() {
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>("1dcbb286-0d5f-4dd7-91a8-bcb39242815a");
   const [mapData, setMapData] = useState<SupabaseLandmarkPayload[]>([]);
-
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  
   const router = useRouter();
 
   // Simulate an API data fetch whenever the selected Area changes
   useEffect(() => {
     if (selectedAreaId && MOCK_DATABASE_BY_AREA[selectedAreaId]) {
-      // Mimics running your: const data = await fetchMapDataByArea(selectedAreaId)
       setMapData(MOCK_DATABASE_BY_AREA[selectedAreaId]);
     } else {
       setMapData([]);
@@ -31,15 +33,18 @@ export default function HomeScreen() {
   }, [selectedAreaId]);
 
   const handleHelpPress = () => console.log('Help opened!');
-  const handleMenuPress = () => console.log('Menu opened!');
+  
+  const handleReportSubmit = (status: 'Empty' | 'Half-Full' | 'Full') => {
+    console.log(`Reported as: ${status}`);
+    // Future: Add your Supabase update logic here
+    setIsReportModalOpen(false);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: Colors.background }]}>
       
       <View style={styles.header}>
         <MenuButton onPress={() => setIsSidebarOpen(true)} />
-          
-        
         <Text style={[styles.welcomeText, { color: Colors.text }]}>
             Janitoroute - Home Screen
         </Text>
@@ -47,37 +52,34 @@ export default function HomeScreen() {
       </View>
 
       <Button 
-        title="Test Admin View" 
-        onPress={() => router.push('/(admin)/edit_map')} 
-      />
-            <Button 
-        title="Test Janitor View" 
-        onPress={() => router.push('/(janitor)/janitor')} 
+        title="Report Wastebin Status" 
+        onPress={() => setIsReportModalOpen(true)} 
       />
 
       {isSidebarOpen && (
-                  <Sidebar 
-                    currentRole="GUEST"
-                    onClose={() => setIsSidebarOpen(false)}
-                    onRoleChange={(newRole: Role) => {
-                      setIsSidebarOpen(false); // Close the drawer
-                      
-                      // Handle routing into specific folders based on selection
-                      if (newRole === 'ADMIN') {
-                        // Redirects into your app/(admin)/_layout.tsx tabs structure
-                        router.replace('/(admin)/dashboard'); 
-                      } else if (newRole === 'JANITOR') {
-                        // Redirects into your janitor directory once active
-                        // router.replace('/(janitor)/tasks'); 
-                      }
-                    }}
-                  />
-                )}
+        <Sidebar 
+          currentRole="GUEST"
+          onClose={() => setIsSidebarOpen(false)}
+          onRoleChange={(newRole: Role) => {
+            setIsSidebarOpen(false);
+            if (newRole === 'ADMIN') {
+              router.replace('/(admin)/map'); 
+            } else if (newRole === 'JANITOR') {
+              router.replace('/(janitor)/janitor'); 
+            }
+          }}
+        />
+      )}
 
       <View style={styles.graphWrapper}>
-        {/* PASS THE DATA STATE DOWN TO THE GRAPH COMPONENT */}
         <NodalGraph mapData={mapData} />
       </View>
+
+      <ReportStatusModal 
+        visible={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSelectStatus={handleReportSubmit}
+      />
     </View>
   );
 }
@@ -85,12 +87,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
   welcomeText: {
     fontSize: 12,

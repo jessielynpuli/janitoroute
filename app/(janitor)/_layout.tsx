@@ -77,7 +77,7 @@ export default function AdminLayout() {
             if (newRole === 'GUEST') {
               router.replace('/');
             } else if (newRole === 'ADMIN') {
-              // router.replace('/(admin)/map'); 
+              router.replace('/(admin)/map'); 
             }
           }}
         />
