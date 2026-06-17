@@ -1,22 +1,19 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Pressable, PanResponder, StyleSheet, View, Text, TouchableOpacity, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // --- IMPORT COMPONENTS ---
-import AreaDropdown, { DropdownItem } from '@/components/areaDropdown'; 
+import AreaDropdown, { DropdownItem } from '@/components/areaDropdown';
 //import NodalGraph, { WastebinRow, LandmarkRow } from '@/components/GraphNodes';
-import NodalGraph, {WastebinRow, LandmarkRow} from '@/components/NodalGraph';
 import { AddAreaButton } from '@/components/addArea';
-import { AddLandmarkButton } from '@/components/addLandmark';
-import { AddTrashbinButton } from '@/components/AddTrashbin';
-import { RemoveButton } from '@/components/RemoveButton';
 import { AddDetailsModal, PopupType } from '@/components/AddDetailsModal';
+import { AddLandmarkButton } from '@/components/addLandmark';
+import { AddTrashbinButton } from '@/components/addTrashbin';
+import NodalGraph, { LandmarkRow } from '@/components/NodalGraph';
+import { RemoveButton } from '@/components/RemoveButton';
 
 // --- IMPORT API FUNCTIONS ---
-import { AreaInput, LandmarkInput, WastebinInput } from '@/api/wastebins/wb_queries';
-import { fetchAllAreas, fetchMapDataByArea, createArea, updateArea, deleteArea } from '@/api/wastebins/wb_queries';
-import { createLandmark, updateLandmark, deleteLandmark } from '@/api/wastebins/wb_queries';
-import { createWastebin, fetchWastebinDetails, updateWastebin, deleteWastebin } from '@/api/wastebins/wb_queries';
-import { insertNetworkEdges, WEIGHT_MAP, UIWeight, DBEdge, fetchNetworkEdges } from '@/api/edges/edges_queries';
+import { DBEdge, fetchNetworkEdges, insertNetworkEdges, UIWeight, WEIGHT_MAP } from '@/api/edges/edges_queries';
+import { AreaInput, createArea, createLandmark, createWastebin, deleteArea, deleteLandmark, deleteWastebin, fetchAllAreas, fetchMapDataByArea, updateLandmark, updateWastebin } from '@/api/wastebins/wb_queries';
 
 import { s } from 'react-native-size-matters';
 
