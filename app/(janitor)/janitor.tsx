@@ -1,41 +1,43 @@
 import { fetchAllAreas } from '@/api/wastebins/wb_queries';
 import AreaDropdown from '@/components/areaDropdown';
+import { BinStatusModal } from '@/components/BinStatusModal';
 import NodalGraph from '@/components/NodalGraph';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BinStatusModal } from '@/components/BinStatusModal';
 
 import { MOCK_DATABASE_BY_AREA } from '@/constants/interfaceData';
 
 export default function JanitorScreen() {
+  // --- UI/Data States ---
   const [areas, setAreas] = useState<any[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [mapData, setMapData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // --- Modal & Interaction States ---
   const [modalVisible, setModalVisible] = useState(false);
   const [targetBinId, setTargetBinId] = useState<string | null>(null);
     
-  // Janitor Logic States
+  // --- BFS Pathfinding States ---
   const [startNodeId, setStartNodeId] = useState<string | null>(null);
   const [highlightedEdges, setHighlightedEdges] = useState<Array<{ from: string; to: string }>>([]);
 
+  /**
+   * Updates the UI status of a bin locally.
+   * This provides the "Live Demo" feel without needing immediate DB writes.
+   */
   const updateBinStatus = (binId: string, newStatus: string) => {
-  // Update local mapData state to trigger immediate re-render
-  setMapData(prevData => 
-    prevData.map(landmark => ({
-      ...landmark,
-      wastebins: landmark.wastebins.map((bin: any) => 
-        bin.wastebin_id === binId ? { ...bin, status: newStatus } : bin
-      )
-    }))
-  );
-  
-  // OPTIONAL: Add an API call here to persist to Supabase
-  // await updateWastebin(binId, { status: newStatus });
-};
+    setMapData(prevData => 
+      prevData.map(landmark => ({
+        ...landmark,
+        wastebins: landmark.wastebins.map((bin: any) => 
+          bin.wastebin_id === binId ? { ...bin, status: newStatus } : bin
+        )
+      }))
+    );
+  };
 
-  // 1. Initial Load: Fetch Areas
+  // 1. Initial Load: Fetch all available areas from API
   useEffect(() => {
     fetchAllAreas().then(data => {
       setAreas(data);
@@ -44,23 +46,25 @@ export default function JanitorScreen() {
     });
   }, []);
 
-  // 2. Fetch Map Data whenever Area changes
-    useEffect(() => {
-    // Just load the mock data directly. No API calls, no errors, no waiting.
+  // 2. Data Sync: Re-fetch or switch local map data when Area selection changes
+  useEffect(() => {
     if (selectedAreaId && MOCK_DATABASE_BY_AREA[selectedAreaId]) {
         setMapData(MOCK_DATABASE_BY_AREA[selectedAreaId]);
-        setLoading(false); // Stop the loading spinner immediately
+        setLoading(false);
     }
-    }, [selectedAreaId]);
+  }, [selectedAreaId]);
 
-  // 3. BFS Logic (The "Brain")
+  /**
+   * Breadth-First Search (BFS) Algorithm:
+   * Finds the shortest path to the nearest 'full' bin node from a selected starting point.
+   */
   const runBFS = () => {
     if (!startNodeId) {
       Alert.alert("Select a Node", "Please tap a landmark or bin first.");
       return;
     }
 
-    // Build Adjacency List dynamically from live mapData
+    // Build internal graph structure (Adjacency List) from current state
     const adj: Record<string, string[]> = {};
     const binStatuses: Record<string, string> = {};
 
@@ -72,7 +76,7 @@ export default function JanitorScreen() {
       });
     });
 
-    // BFS Search
+    // BFS Execution
     const queue = [startNodeId];
     const visited = new Set([startNodeId]);
     const parent: Record<string, string> = {};
@@ -80,6 +84,7 @@ export default function JanitorScreen() {
     while (queue.length > 0) {
       const curr = queue.shift()!;
       
+      // Target found: calculate path back using the parent pointers
       if (binStatuses[curr] === 'full') {
         const path = [];
         let temp = curr;
@@ -92,6 +97,7 @@ export default function JanitorScreen() {
         return;
       }
 
+      // Explore neighbors
       for (const neighbor of (adj[curr] || [])) {
         if (!visited.has(neighbor)) {
           visited.add(neighbor);
@@ -107,12 +113,15 @@ export default function JanitorScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Area selection control */}
       <AreaDropdown 
         data={areas.map(a => ({ label: a.area_name, value: a.area_id }))}
         placeholder="CHOOSE AREA"
         selectedValue={selectedAreaId}
-        onSelect={(item: { label: string; value: string }) => setSelectedAreaId(item.value)}      />
+        onSelect={(item: { label: string; value: string }) => setSelectedAreaId(item.value)}
+      />
       
+      {/* Interactive Map/Graph display */}
       <View style={styles.graphWrapper}>
         <NodalGraph 
           mapData={mapData}
@@ -120,38 +129,40 @@ export default function JanitorScreen() {
           isDeleteMode={false}
           highlightedEdges={highlightedEdges}
           onNodePress={(id, isLandmark, nodeDetails) => {
-    // 1. If it's a landmark, just set it as the start node
-    if (isLandmark) {
-      setStartNodeId(id);
-      return;
-    } else {
-      setTargetBinId(id);
-      setModalVisible(true);
-    }
+            // Handle landmark selection (start point) vs wastebin selection (toggle status)
+            if (isLandmark) {
+              setStartNodeId(id);
+              return;
+            } else {
+              setTargetBinId(id);
+              setModalVisible(true);
+            }
 
-    // 2. If it's a wastebin, show the toggle alert
-    Alert.alert(
-      "Update Bin Status",
-      `Current Status: ${nodeDetails.status}`,
-      [
-        { text: "Empty", onPress: () => updateBinStatus(id, 'empty') },
-        { text: "Half-Full", onPress: () => updateBinStatus(id, 'half-full') },
-        { text: "Full", onPress: () => updateBinStatus(id, 'full') },
-        { text: "Cancel", style: "cancel" }
-      ]
-    );
-  }}
+            // Quick-action menu for status updates
+            Alert.alert(
+              "Update Bin Status",
+              `Current Status: ${nodeDetails.status}`,
+              [
+                { text: "Empty", onPress: () => updateBinStatus(id, 'empty') },
+                { text: "Full", onPress: () => updateBinStatus(id, 'full') },
+                { text: "Cancel", style: "cancel" }
+              ]
+            );
+          }}
         />
       </View>
-              <BinStatusModal 
+      
+      {/* Modal for detail-oriented status changes */}
+      <BinStatusModal 
           visible={modalVisible}
           onClose={() => setModalVisible(false)}
           onSelect={(status) => {
             if (targetBinId) updateBinStatus(targetBinId, status);
             setModalVisible(false);
           }}
-        />
+      />
 
+      {/* Primary Action Trigger */}
       <TouchableOpacity style={styles.button} onPress={runBFS}>
         <Text style={styles.btnText}>Find Nearest Full Bin (BFS)</Text>
       </TouchableOpacity>
