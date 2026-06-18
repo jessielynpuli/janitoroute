@@ -22,7 +22,7 @@ interface AddDetailsModalProps {
     y_position?: number;
     area_id?: string;
     landmark_id?: string;
-    edit_node_id?: string;
+    edit_node_id?: string; // Passed from parent screen
   };
 
    // We pass existing nodes into the modal so the user can choose them from a list
@@ -32,8 +32,9 @@ interface AddDetailsModalProps {
     type: 'AREA' | 'LANDMARK' | 'TRASHBIN';
     nodeData: AreaInput | LandmarkInput | WastebinInput;
     edgeData: {
-      target_node_id: string;
+      to_node_id: string;
       target_type: 'landmark' | 'wastebin';
+      
       chosenUIWeight: UIWeight;
     } | null; // null if they choose not to connect to anything
   }) => void;
@@ -48,13 +49,40 @@ export const AddDetailsModal: React.FC<AddDetailsModalProps> = ({ visible, type,
   const [selectedWeight, setSelectedWeight] = useState<UIWeight>('Adjacent');
   const [connections, setConnections] = useState<ConnectionSelection[]>([]);
 
+  // Dropdown state
+  const [expandedDropdownId, setExpandedDropdownId] = useState<string | null>(null);
+  // link
+  const [mode, setMode] = useState<'view' | 'link'>('view')
+  
+  const isEditing = !!contextData?.edit_node_id;
 
+  // ==========================================
+  // INITIALIZATION EFFECT (Fires when modal opens)
+  // ==========================================
   useEffect(() => {
     if (visible) {
-      setInputValue('');
-      setConnections([]);
+      if (isEditing && contextData?.edit_node_id) {
+        // --- EDIT MODE: Pre-fill the form ---
+        const targetNode = existingNodesList.find((node) => node.id === contextData.edit_node_id);
+        
+        if (targetNode) {
+          // Clean up the visual emojis to get the raw name
+          const cleanName = targetNode.name
+            .replace('📍 Landmark: ', '')
+            .replace('🗑️ Trashbin: ', '')
+            .split(' (')[0];
+            
+          setInputValue(cleanName);
+          setConnections([]); // You can modify this later if you want to load existing edges
+        }
+      } else {
+        // --- CREATE MODE: Wipe the form clean ---
+        setInputValue('');
+        setConnections([]);
+      }
+      setExpandedDropdownId(null);
     }
-  }, [visible]);
+  }, [visible, contextData?.edit_node_id, existingNodesList]);
 
   // Helper functions to manage the dynamic layout blocks
   const addConnectionBlock = () => {
@@ -77,38 +105,42 @@ export const AddDetailsModal: React.FC<AddDetailsModalProps> = ({ visible, type,
   const handleSave = () => {
     if (inputValue.trim() === '') return;
 
-    // Filter out any blocks where the user didn't actually select a target node
-    const formattedEdges = connections
-      .filter(c => c.targetNodeId !== null)
-      .map(c => {
-        const matchingNode = existingNodesList.find(n => n.id === c.targetNodeId);
-        return {
-          target_node_id: c.targetNodeId!,
-          target_type: matchingNode?.type ?? 'landmark',
-          chosenUIWeight: c.chosenWeight
-        };
-      });
+    // 1. Filter out empty connection blocks where the user hasn't selected a node yet
+    const activeConnections = connections.filter(c => c.targetNodeId !== null);
 
-    // Standard fallback coordinate variables
-    const x = contextData?.x_position ?? 0;
-    const y = contextData?.y_position ?? 0;
-
-    let nodePayload: AreaInput | LandmarkInput | WastebinInput;
     let edgePayload = null;
 
-    //Build the Connection (Edge) bundle if an item is selected
-    if (selectedTargetId) {
-      const targetNode = existingNodesList.find(n => n.id === selectedTargetId);
+    // 2. Map the first valid connection row directly to your onSave prop contract
+    if (activeConnections.length > 0) {
+      const primaryConnection = activeConnections[0];
+      const targetNode = existingNodesList.find(n => n.id === primaryConnection.targetNodeId);
+      
       if (targetNode) {
         edgePayload = {
-          target_node_id: selectedTargetId,
+          to_node_id: primaryConnection.targetNodeId!,
           target_type: targetNode.type,
-          chosenUIWeight: selectedWeight
+          chosenUIWeight: primaryConnection.chosenWeight // Passes 'Adjacent' | 'Midway' | 'Remote'
         };
       }
     }
 
-  // 2. Build the specific Node payload
+    // Standard fallback coordinate variables
+    // added zeroes. might edit.
+    const x = contextData?.x_position ?? 0;
+    const y = contextData?.y_position ?? 0;
+
+    console.log(`Modal package payload confirming coordinates: X=${x}, Y=${y}`);
+
+    if (!isEditing && (x === undefined || y === undefined) && type !== 'AREA') {
+      alert("Coordinate placement error! Re-tap the map grid.");
+      return;
+    }
+
+    let nodePayload: AreaInput | LandmarkInput | WastebinInput;
+
+    // ==========================================
+    // 3. Build and hand off the specific Node payloads
+    // ==========================================
     if (type === 'AREA') {
       nodePayload = { area_name: inputValue };
       onSave({ type: 'AREA', nodeData: nodePayload, edgeData: null });
@@ -117,8 +149,8 @@ export const AddDetailsModal: React.FC<AddDetailsModalProps> = ({ visible, type,
     else if (type === 'LANDMARK') {
       nodePayload = {
         area_id: contextData?.area_id ?? '',
-        x_position: x,
-        y_position: y,
+        x_position: x!,
+        y_position: y!,
         landmark_name: inputValue,
       };
       onSave({ type: 'LANDMARK', nodeData: nodePayload, edgeData: edgePayload });
@@ -128,8 +160,8 @@ export const AddDetailsModal: React.FC<AddDetailsModalProps> = ({ visible, type,
       nodePayload = {
         landmark_id: contextData?.landmark_id ?? '',
         status: 'empty',
-        x_position: x,
-        y_position: y,
+        x_position: x!,
+        y_position: y!,
         description: inputValue,
       };
       onSave({ type: 'TRASHBIN', nodeData: nodePayload, edgeData: edgePayload });
@@ -138,12 +170,15 @@ export const AddDetailsModal: React.FC<AddDetailsModalProps> = ({ visible, type,
     onClose();
   };
 
+  // Dynamic UI Text
+  const modalTitleText = isEditing ? `EDIT ${type}` : `ADD ${type}`;
+  const saveButtonText = isEditing ? 'UPDATE' : 'SAVE';
 
   return (
     <Modal visible={visible} transparent={true} animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>ADD {type}</Text>
+          <Text style={styles.modalTitle}>{modalTitleText}</Text>
 
           {/* Core Node Text Input */}
           <TextInput
@@ -154,7 +189,8 @@ export const AddDetailsModal: React.FC<AddDetailsModalProps> = ({ visible, type,
           />
 
           {/* --- NEW EDGE SECTION LAYER --- */}
-          {type !== 'AREA' && (
+          {/* We only show the edge builder if creating a new node, or you can allow it for edits too */}
+          {type !== 'AREA' && !isEditing && (
             <View style={styles.edgeFormSection}>
              {/* Loop and render every configured connection block dynamically */}
     {connections.map((conn, index) => (
@@ -167,14 +203,49 @@ export const AddDetailsModal: React.FC<AddDetailsModalProps> = ({ visible, type,
           </TouchableOpacity>
         </View>
 
-        {/* 1. Target Node Dropdown Selection Area */}
-        {/* You can replace this placeholder with your actual AreaDropdown layout component */}
-        <View style={styles.dropdownPlaceholderBox}>
-          <Text style={styles.dropdownPlaceholderText}>
-            {conn.targetNodeId 
-              ? existingNodesList.find(n => n.id === conn.targetNodeId)?.name 
-              : "Select Target Landmark or Wastebin..."}
+        {/* 1. Target Node Dropdown Selection Area inside AddDetailsModal.tsx */}
+        {/* Replace your old dropdownPlaceholderBox layout with this: */}
+        <View style={{ marginBottom: 12, position: 'relative', zIndex: 100 - index }}>
+          <Text style={{ fontSize: 11, color: '#6D6D6D', fontWeight: '700', marginBottom: 4 }}>
+            SELECT DESTINATION NODE:
           </Text>
+          
+          {/* The Main Select Field Header Box Toggler */}
+          <TouchableOpacity 
+            style={styles.dropdownPlaceholderBox}
+            onPress={() => setExpandedDropdownId(expandedDropdownId === conn.id ? null : conn.id)}
+          >
+            <Text style={[styles.dropdownPlaceholderText, conn.targetNodeId && { color: '#1E56A0', fontStyle: 'normal', fontWeight: '600' }]}>
+              {conn.targetNodeId 
+                ? existingNodesList.find(n => n.id === conn.targetNodeId)?.name 
+                : "Choose Landmark or Trashbin... ▾"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* DYNAMIC COLLAPSIBLE DROPDOWN CHOICES DRAWER */}
+          {expandedDropdownId === conn.id && (
+            <View style={styles.dropdownDrawerOverlayList}>
+              {existingNodesList.length === 0 ? (
+                <Text style={styles.dropdownEmptyText}>No structures built in this area yet.</Text>
+              ) : (
+                existingNodesList.map((node) => (
+                  <TouchableOpacity
+                    key={node.id}
+                    style={[
+                      styles.dropdownItemRow,
+                      conn.targetNodeId === node.id && { backgroundColor: '#E2E8F0' }
+                    ]}
+                    onPress={() => {
+                      updateConnectionBlock(conn.id, { targetNodeId: node.id });
+                      setExpandedDropdownId(null); // Instantly collapse panel on choice selection
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, color: '#334155' }}>{node.name}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          )}
         </View>
 
         {/* 2. Weight Segment Picker Row */}
@@ -207,8 +278,12 @@ export const AddDetailsModal: React.FC<AddDetailsModalProps> = ({ visible, type,
 
           {/* Save & Cancel Row */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity onPress={onClose} style={styles.cancelBtn}><Text>CANCEL</Text></TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} style={styles.saveBtn}><Text>SAVE</Text></TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={[styles.actionBtn, styles.cancelBtn]}>
+                <Text style={styles.cancelBtnText}>CANCEL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSave} style={[styles.actionBtn, styles.saveBtn]}>
+                <Text style={styles.saveBtnText}>{saveButtonText}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -371,4 +446,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
+  dropdownDrawerOverlayList: {
+  position: 'absolute',
+  top: 65, // Positions directly below the click trigger button row
+  left: 0,
+  right: 0,
+  backgroundColor: '#FFFFFF',
+  borderWidth: 2,
+  borderColor: '#6D6D6D',
+  maxHeight: 150, // Limits huge overflow scrolls
+  elevation: 5, // Appends clear visibility shadows over background text
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.2,
+  shadowRadius: 3,
+},
+dropdownItemRow: {
+  padding: 10,
+  borderBottomWidth: 1,
+  borderBottomColor: '#E2E8F0',
+  backgroundColor: '#FFF',
+},
+dropdownEmptyText: {
+  padding: 12,
+  color: '#94A3B8',
+  fontStyle: 'italic',
+  textAlign: 'center',
+},
 });

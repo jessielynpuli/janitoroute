@@ -1,10 +1,13 @@
-import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { Image, StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+//for verification
+import AdminPasskeyModal from '@/components/AdminPasskeyModal';
+import JanitorLoginModal from './JanitorLoginModal'; 
 
 type Role = 'ADMIN' | 'JANITOR' | 'GUEST';
 
@@ -15,6 +18,8 @@ interface SidebarProps {
 }
 
 export default function SideBar({ currentRole, onClose, onRoleChange }: SidebarProps) {
+
+// Use it like: source={images[variableName]}
   
   // Helper to color-code the role indicators dynamically
   const getRoleColor = (role: Role) => {
@@ -22,6 +27,9 @@ export default function SideBar({ currentRole, onClose, onRoleChange }: SidebarP
     if (role === 'JANITOR') return '#0D47A1'; // Blue
     return '#555'; // Gray for Guest
   };
+
+  const [passkeyVisible, setPasskeyVisible] = useState(false);
+  const [janitorLoginVisible, setJanitorLoginVisible] = useState(false);
 
   return (
     <SafeAreaView style={styles.sidebarContainer}>
@@ -101,9 +109,29 @@ export default function SideBar({ currentRole, onClose, onRoleChange }: SidebarP
 
       {/* Footer Branding Logo */}
       <View style={styles.footer}>
-        <Text style={styles.logoAbbreviation}>JR</Text>
-        <Text style={styles.broomIcon}>🧹</Text>
+        <Image
+        source={require('@/assets/images/icon.png')}
+        style={styles.logo}/>
       </View>
+
+        <AdminPasskeyModal
+        visible={passkeyVisible}
+        onClose={() => setPasskeyVisible(false)}
+        onSuccess={() => {
+          setPasskeyVisible(false);
+          onRoleChange('ADMIN'); // Success callback fires state upward to app router layout
+        }}
+      />
+
+      <JanitorLoginModal
+        visible={janitorLoginVisible}
+        onClose={() => setJanitorLoginVisible(false)}
+        onSuccess={() => {
+          setJanitorLoginVisible(false);
+          onRoleChange('JANITOR'); // Propagates the validated credentials state update upward
+        }}
+      />
+
     </SafeAreaView>
   );
 }
@@ -118,7 +146,7 @@ const styles = StyleSheet.create({
     width: width * 0.75, // Takes up 75% of the screen width
     height: '100%',
     backgroundColor: '#B3D7E8', // Light blue background from your wireframe
-    zIndex: 10,
+    zIndex: 20,
     borderLeftWidth: 2,
     borderLeftColor: '#0D47A1',
   },
@@ -164,17 +192,8 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     position: 'relative',
   },
-  logoAbbreviation: {
-    fontSize: 70,
-    fontWeight: '900',
-    color: '#0D47A1',
-    fontFamily: 'serif',
-  },
-  broomIcon: {
-    fontSize: 35,
-    color: '#1B5E20',
-    position: 'absolute',
-    bottom: 10,
-    right: '35%',
+  logo: {
+   width: 150,
+   height:150,
   },
 });

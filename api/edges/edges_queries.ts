@@ -25,7 +25,7 @@ export interface DBEdge {
 export const fetchNetworkEdges = async (): Promise<DBEdge[]> => {
   const { data, error } = await supabase
     .from('edges')
-    .select('edge_id, from_node_id, source_type, to_node_id, target_type, weight');
+    .select('edge_id, from_node_id, to_node_id, source_type, target_type, weight');
 
   if (error) {
     console.error("Failed to fetch network edges:", error.message);

@@ -38,6 +38,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# for assets
+*:Zone.Identifier
+
 app-example
 
 # generated native folders

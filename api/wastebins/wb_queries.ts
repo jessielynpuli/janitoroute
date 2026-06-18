@@ -49,19 +49,7 @@ export const fetchAllAreas = async () => {
 export const fetchMapDataByArea = async (areaId: string) => {
   const { data, error } = await supabase
     .from('landmarks')
-    .select(`
-      landmark_id,
-      landmark_name,
-      x_position,
-      y_position,
-      wastebins (
-        wastebin_id,
-        status,
-        x_position,
-        y_position,
-        description
-      )
-    `)
+    .select(`*, wastebins(*)`)
     .eq('area_id', areaId);
 
   if (error) {
@@ -131,18 +119,23 @@ export const deleteArea = async (areaId: string) => {
 
 // 1. Creating a landmark via admin
 
-export const createLandmark = async (landmarkData: LandmarkInput) => {
+export const createLandmark = async (landmarkData: any) => {
+  try {
     const { data, error } = await supabase
-        .from('landmarks')
-        .insert([landmarkData]) 
-        .select()
-        .single();
-    
+      .from('landmarks')
+      .insert([landmarkData])
+      .select()
+      .single(); // Use .single() to get the object back
+
     if (error) {
-        console.error("Failed to create landmark:", error.message);
-        return { success: false, error };
+      console.error("Supabase Error Object:", error); // This will show you the real error!
+      return { success: false, error };
     }
-    return { success: true, data: data[0] };
+    return { success: true, data };
+  } catch (err) {
+    console.error("Caught unexpected exception:", err);
+    return { success: false, error: err };
+  }
 };
 
 
@@ -170,22 +163,49 @@ export const updateLandmark = async (landId: string, updates: Partial<LandmarkIn
 
 // 3. Delete a landmark
 
-export const deleteLandmark = async ( landId: string ) => {
-    const { data, error } = await supabase
-        .from('landmarks')
-        .delete()
-        .eq('landmark_id', landId)
-        .select();
+export const deleteLandmark = async (landId: string) => {
+    try {
+        // A. Find all wastebin IDs belonging to this landmark first so we can clear their lines too
+        const { data: bins } = await supabase
+            .from('wastebins')
+            .select('wastebin_id')
+            .eq('landmark_id', landId);
 
-        console.log("Supabase Delete Landmark Response Data Raw: ", data)
-    
-    if (error) {
-        console.error("Failed to delete landmark:", error.message);
-    }
-    
-    // If data array is empty, it means no rows met the filter requirements
+        const binIds = bins ? bins.map(b => b.wastebin_id) : [];
+
+        // B. Clear any network edges linked to this landmark OR its child wastebins
+        if (binIds.length > 0) {
+            await supabase
+                .from('edges')
+                .delete()
+                .or(`from_node_id.eq.${landId},to_node_id.eq.${landId},from_node_id.in.(${binIds.join(',')}),to_node_id.in.(${binIds.join(',')})`);
+        } else {
+            await supabase
+                .from('edges')
+                .delete()
+                .or(`from_node_id.eq.${landId},to_node_id.eq.${landId}`);
+        }
+
+        // C. Finally delete the landmark. DB cascades down to clear 'wastebins' automatically!
+        const { data, error } = await supabase
+            .from('landmarks')
+            .delete()
+            .eq('landmark_id', landId)
+            .select();
+
+        console.log("Supabase Delete Landmark Response Data Raw: ", data);
+        
+        if (error) {
+            console.error("Failed to delete landmark:", error.message);
+            return { success: false, error };
+        }
+        
         const actuallyDeleted = data && data.length > 0;
-        return { success: !error && actuallyDeleted, error };        
+        return { success: actuallyDeleted, error: actuallyDeleted ? null : new Error("Row not found.") };        
+    } catch (err) {
+        console.error("Network or API execution error during landmark delete:", err);
+        return { success: false, error: err };
+    }
 };
 
 
@@ -206,7 +226,9 @@ export const createWastebin = async (binData: WastebinInput) => {   //binData me
     console.error("Failed to create wastebin:", error.message);
     return { success: false, error };
   }
-  return { success: true, data: data[0] };
+  console.log("DEBUG: Insertion successful, returned data:", data);
+  return { success: true, data };
+  //return { success: true, data: data[0] };
 };
 
 /**
@@ -254,32 +276,41 @@ export const updateWastebin = async (binId: string, updates: Partial<WastebinInp
  * 4. DELETE (Remove a wastebin entirely)
  */
 export const deleteWastebin = async (binId: string) => {
-  try {const { data, error } = await supabase
-    .from('wastebins')
-    .delete()
-    .eq('wastebin_id', binId)
-    .select();
+  try {
+    // A. Clear any network edges linked directly to this wastebin first
+    const { error: edgeError } = await supabase
+        .from('edges')
+        .delete()
+        .or(`from_node_id.eq.${binId},to_node_id.eq.${binId}`);
 
-  if (error) {
-    console.error("Failed to delete wastebin:", error.message);
-    return { success: false, error };
-  }
+    if (edgeError) {
+        console.error("Failed to clear network lines for wastebin:", edgeError.message);
+    }
 
-  // If data comes back as an empty array [], it means Supabase found NOTHING to delete!
+    // B. Now safely delete the wastebin record itself without foreign key errors
+    const { data, error } = await supabase
+        .from('wastebins')
+        .delete()
+        .eq('wastebin_id', binId)
+        .select();
+
+    if (error) {
+        console.error("Failed to delete wastebin:", error.message);
+        return { success: false, error };
+    }
+
     if (!data || data.length === 0) {
-      console.error(`SILENT FAILURE: Supabase could not find a wastebin with ID ${binId} to delete. Check your column name or RLS policies!`);
-      // We return false here so your frontend doesn't falsely clear the screen
-      return { success: false, error: new Error("Row not found or RLS blocked deletion.") }; 
+        console.error(`SILENT FAILURE: Supabase could not find a wastebin with ID ${binId} to delete.`);
+        return { success: false, error: new Error("Row not found or RLS blocked deletion.") }; 
     }
 
     console.log("Successfully deleted row from database:", data);
     return { success: true };
 
-  return { success: true };
-} catch (err) {
-        console.error("Network or API execution error during delete:", err);
-        return { success: false, error: err };
-    }
+  } catch (err) {
+    console.error("Network or API execution error during delete:", err);
+    return { success: false, error: err };
+  }
 };
 
 
