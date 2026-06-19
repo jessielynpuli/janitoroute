@@ -1,25 +1,20 @@
-import React, { useEffect, useState, useRef, useMemo} from 'react';
-import { Alert, Pressable, PanResponder, StyleSheet, View, Text, TouchableOpacity, Animated } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Animated, PanResponder, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // import components
-import AreaDropdown, { DropdownItem } from '@/components/areaDropdown'; 
-import NodalGraph, { WastebinRow, LandmarkRow} from '@/components/GraphNodes'; // will change to bfs
+import AreaDropdown, { DropdownItem } from '@/components/areaDropdown';
+import NodalGraph, { LandmarkRow } from '@/components/GraphNodes'; // will change to bfs
 //import nodeCoordinates from '@/components/GraphNodes';
 import { AddAreaButton } from '@/components/addArea';
-import { AddLandmarkButton } from '@/components/addLandmark';
-import { AddTrashbinButton } from '@/components/AddTrashbin';
-import { RemoveButton } from '@/components/RemoveButton';
 import { AddDetailsModal, PopupType } from '@/components/AddDetailsModal';
+import { AddLandmarkButton } from '@/components/addLandmark';
+import { AddTrashbinButton } from '@/components/addTrashbin';
+import { RemoveButton } from '@/components/RemoveButton';
 
 //import api functions
-import { AreaInput, LandmarkInput, WastebinInput } from '@/api/wastebins/wb_queries';
-import { fetchAllAreas, fetchMapDataByArea, createArea, updateArea, deleteArea, } from '@/api/wastebins/wb_queries';
-import { createLandmark, updateLandmark, deleteLandmark } from '@/api/wastebins/wb_queries';
-import { createWastebin, fetchWastebinDetails, updateWastebin, deleteWastebin } from '@/api/wastebins/wb_queries';
-import { insertNetworkEdges, fetchNetworkEdges, WEIGHT_MAP, UIWeight } from '@/api/edges/edges_queries';
-import { DBEdge } from '@/api/edges/edges_queries';
+import { DBEdge, fetchNetworkEdges, insertNetworkEdges, UIWeight, WEIGHT_MAP } from '@/api/edges/edges_queries';
+import { createArea, createLandmark, createWastebin, deleteArea, deleteLandmark, deleteWastebin, fetchAllAreas, fetchMapDataByArea, updateLandmark, updateWastebin } from '@/api/wastebins/wb_queries';
 import { s } from 'react-native-size-matters';
 
-import { MOCK_DATABASE_BY_AREA, SupabaseLandmarkPayload } from '@/constants/mockData';
 import { buildNodeCoordinates } from '@/hooks/graphUtils';
 
 // Then in your component:

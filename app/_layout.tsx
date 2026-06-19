@@ -1,10 +1,15 @@
+import { AuthProvider } from '*/context/AuthContext';
 import { Stack } from 'expo-router';
+import React from 'react';
 
 export default function RootLayout() {
   return (
-    <Stack>
-      {/* This just displays your home screen without the native top header bar */}
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-    </Stack>
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(admin)" />
+        <Stack.Screen name="(janitor)" />
+      </Stack>
+    </AuthProvider>
   );
-} 
+}
