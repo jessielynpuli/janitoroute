@@ -5,29 +5,31 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Live Supabase API queries
+// API imports for supabase fetching and updates
 import { DBEdge, fetchNetworkEdges } from '@/api/edges/edges_queries';
 import { fetchAllAreas, fetchMapDataByArea, updateWastebin } from '@/api/wastebins/wb_queries';
 
 export default function JanitorScreen() {
   const insets = useSafeAreaInsets();
   
+  // State for dropdown selections and map data
   const [areaData, setAreaData] = useState<DropdownItem[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [mapData, setMapData] = useState<LandmarkRow[]>([]);
   const [edgesData, setEdgesData] = useState<DBEdge[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal & Target State Hooks
+  // Controls modal visibility and state for selected nodes/paths
   const [modalVisible, setModalVisible] = useState(false);
   const [targetBinId, setTargetBinId] = useState<string | null>(null);
   const [startNodeId, setStartNodeId] = useState<string | null>(null);
   const [highlightedEdges, setHighlightedEdges] = useState<Array<{ from: string; to: string }>>([]);
 
-  // Map Panning and Zooming Drivers
+  // Animation values for map dragging and zoom level
   const [scaleValue] = useState(new Animated.Value(1));
   const pan = useRef(new Animated.ValueXY({ x: -50, y: -50 })).current;
 
+  // Handles dragging/panning logic for the map canvas
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5,
@@ -43,12 +45,13 @@ export default function JanitorScreen() {
     })
   ).current;
 
+  // Simple increment/decrement zoom utility
   const handleZoom = (type: 'IN' | 'OUT') => {
     let nextScale = (scaleValue as any)._value + (type === 'IN' ? 0.2 : -0.2);
     Animated.timing(scaleValue, { toValue: Math.min(Math.max(nextScale, 0.4), 2.0), duration: 150, useNativeDriver: true }).start();
   };
 
-  // --- Core API Data Pull System ---
+  // Get initial dropdown items on mount
   const loadInitialWorkspaceData = async () => {
     try {
       const data = await fetchAllAreas();
@@ -62,6 +65,7 @@ export default function JanitorScreen() {
     }
   };
 
+  // Fetch or refresh nodes and edges whenever a new area is picked
   const refreshCanvasMap = async () => {
     if (!selectedAreaId) return;
     const result = await fetchMapDataByArea(selectedAreaId);
@@ -70,10 +74,13 @@ export default function JanitorScreen() {
     setEdgesData(edges);
   };
 
+  // Initial load
   useEffect(() => { loadInitialWorkspaceData(); }, []);
+  
+  // Reset paths and reload map details whenever the active area updates
   useEffect(() => { refreshCanvasMap(); setHighlightedEdges([]); setStartNodeId(null); }, [selectedAreaId]);
 
-  // --- Dynamic Live Updating Method ---
+  // Update a bin's fill status and refresh the map UI
   const handleUpdateBinStatus = async (status: 'empty' | 'half-full' | 'full') => {
     if (!targetBinId) return;
     setModalVisible(false);
@@ -86,18 +93,17 @@ export default function JanitorScreen() {
     }
   };
 
-  // --- BFS Graph Traversal Core Engine ---
+  // BFS logic to find routes to full bins
   const runBFSPathfinder = (mode: 'NEAREST' | 'ALL') => {
     if (!startNodeId) {
       Alert.alert("Anchor Point Required", "Tap any node on the graph canvas workspace to define your baseline location first!");
       return;
     }
 
-    // 1. Build an adjacency map representing your graph structure
+    // Convert raw edges list into an adjacency list for easier traversal
     const adjList: Record<string, string[]> = {};
     const nodeStatusLookup: Record<string, string> = {};
 
-    // Map explicit edge routes
     edgesData.forEach(edge => {
       if (!adjList[edge.from_node_id]) adjList[edge.from_node_id] = [];
       if (!adjList[edge.to_node_id]) adjList[edge.to_node_id] = [];
@@ -105,14 +111,14 @@ export default function JanitorScreen() {
       adjList[edge.to_node_id].push(edge.from_node_id);
     });
 
-    // Capture bin occupancy statuses across locations
+    // Create a key-value store for quickly looking up a bin's status by id
     mapData.forEach(landmark => {
       landmark.wastebins?.forEach(bin => {
         nodeStatusLookup[bin.wastebin_id] = bin.status;
       });
     });
 
-    // 2. Traversal setup parameters
+    // BFS tracking queues and sets
     const queue: string[] = [startNodeId];
     const visited = new Set<string>([startNodeId]);
     const parentTracker: Record<string, string> = {};
@@ -123,8 +129,8 @@ export default function JanitorScreen() {
     while (queue.length > 0) {
       const current = queue.shift()!;
 
+      // Found a full bin, track back to build the path array
       if (nodeStatusLookup[current] === 'full') {
-        // Backtrace route to the current node using our structural path map pointers
         let step = current;
         while (parentTracker[step]) {
           compiledPaths.push({ from: parentTracker[step], to: step });
@@ -134,6 +140,7 @@ export default function JanitorScreen() {
         if (mode === 'NEAREST') break; 
       }
 
+      // Add neighbors to queue if we haven't visited them yet
       const neighbors = adjList[current] || [];
       for (const neighbor of neighbors) {
         if (!visited.has(neighbor)) {
@@ -174,7 +181,7 @@ export default function JanitorScreen() {
               onNodePress={(id, type) => {
                 if (type === 'landmark') {
                   setStartNodeId(id);
-                  setHighlightedEdges([]); // Clear old path selections automatically
+                  setHighlightedEdges([]); // Clear out old paths when a new starting point is selected
                 } else {
                   setTargetBinId(id);
                   setModalVisible(true);
@@ -189,7 +196,6 @@ export default function JanitorScreen() {
           </View>
         </View>
 
-        {/* Control Action Buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={[styles.actionBtn, styles.primaryBtn]} onPress={() => runBFSPathfinder('NEAREST')}>
             <Text style={styles.btnText}>Find Nearest Full Bin</Text>
