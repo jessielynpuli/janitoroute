@@ -1,20 +1,17 @@
 import { Colors } from '@/constants/theme';
-import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View, Button, Animated, PanResponder, TouchableOpacity } from 'react-native';
-import { s } from 'react-native-size-matters';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { s } from 'react-native-size-matters';
 
 // Component layout extensions
-import HelpButton from '@/components/HelpButton';
-import MenuButton from '@/components/MenuButton';
-import AreaDropdown, { DropdownItem } from '@/components/areaDropdown'; 
-import NodalGraph, { WastebinRow, LandmarkRow } from '@/components/GraphNodes';
-import Sidebar from '@/components/SideBar';
+import AreaDropdown, { DropdownItem } from '@/components/areaDropdown';
 import { BinStatusModal } from '@/components/BinStatusModal';
+import NodalGraph, { LandmarkRow } from '@/components/GraphNodes';
 
 // Real API integration points
-import { updateWastebin, fetchAllAreas, fetchMapDataByArea } from '@/api/wastebins/wb_queries'; 
-import { fetchNetworkEdges, DBEdge } from '@/api/edges/edges_queries';
+import { DBEdge, fetchNetworkEdges } from '@/api/edges/edges_queries';
+import { fetchAllAreas, fetchMapDataByArea, updateWastebin } from '@/api/wastebins/wb_queries';
 import JanitorScreen from '@/app/(janitor)/janitor';
 
 type Role = 'ADMIN' | 'JANITOR' | 'GUEST';
@@ -194,37 +191,12 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: Colors.background }]}>
-      
-      {/* Main App Navigation Bar Row */}
-      <View style={styles.header}>
-        <MenuButton onPress={() => setIsSidebarOpen(true)} />
-        <Text style={[styles.welcomeText, { color: Colors.text }]}>
-          Janitoroute - {currentRole === 'JANITOR' ? 'Janitor Portal' : 'Home Screen'}
-        </Text>
-        <HelpButton onPress={() => console.log('Help opened!')} />
-      </View>
-
-      {/* Sidebar Drawer Layout Toggle Container */}
-      {isSidebarOpen && (
-        <Sidebar 
-          currentRole={currentRole}
-          onClose={() => setIsSidebarOpen(false)}
-          onRoleChange={(newRole: Role) => {
-            setCurrentRole(newRole);
-            setIsSidebarOpen(false); 
-
-            if (newRole === 'ADMIN') {
-              router.replace('/(admin)/map'); 
-            }
-          }}
-        />
-      )}    
 
       {/* ========================================================= */}
       {/* PLACE CONDITIONAL WORKSPACE SWITCHER HERE              */}
       {/* ========================================================= */}
       {currentRole === 'JANITOR' ? (
-        <JanitorScreen />
+      <JanitorScreen />
       ) : (
         <>
           {/* INTEGRATED AREA SELECTOR DROPDOWN MODULE CONTAINER */}
@@ -238,10 +210,6 @@ export default function HomeScreen() {
           </View>
 
           {/* Admin Quick Shortcut Navigation Toggle */}
-          <Button 
-            title="Test Admin View" 
-            onPress={() => router.push('/(admin)/edit_map')} 
-          />
 
           {/* Full Map viewport frame inside home layout content window */}
           <View style={styles.graphWindow}>

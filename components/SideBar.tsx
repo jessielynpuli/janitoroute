@@ -1,137 +1,85 @@
-import React, { useState } from 'react';
-import { Image, StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import { useAuth } from '@/constants/AuthContext';
 
 //for verification
 import AdminPasskeyModal from '@/components/AdminPasskeyModal';
-import JanitorLoginModal from './JanitorLoginModal'; 
+import JanitorPasskeyModal from './JanitorPasskeyModal';
 
-type Role = 'ADMIN' | 'JANITOR' | 'GUEST';
-
-interface SidebarProps {
-  currentRole: Role;
-  onClose: () => void;
-  onRoleChange: (newRole: Role) => void;
-}
-
-export default function SideBar({ currentRole, onClose, onRoleChange }: SidebarProps) {
-
-// Use it like: source={images[variableName]}
+export default function SideBar({ onClose }: { onClose: () => void }) {
+  // Pull the current role and the setter function from your global AuthContext
+  const { role, setRole } = useAuth();
+  const router = useRouter();
   
-  // Helper to color-code the role indicators dynamically
-  const getRoleColor = (role: Role) => {
-    if (role === 'ADMIN') return '#8B0000'; // Dark Red
-    if (role === 'JANITOR') return '#0D47A1'; // Blue
-    return '#555'; // Gray for Guest
-  };
-
   const [passkeyVisible, setPasskeyVisible] = useState(false);
   const [janitorLoginVisible, setJanitorLoginVisible] = useState(false);
 
+  // Helper to color-code based on the current context role
+  const getRoleColor = (r: string | null) => {
+    if (r === 'ADMIN') return '#8B0000';
+    if (r === 'JANITOR') return '#0D47A1';
+    return '#555';
+  };
+
   return (
     <SafeAreaView style={styles.sidebarContainer}>
-      {/* Top Header Row */}
       <View style={styles.header}>
-        <Text style={styles.logoText}>
-          Janito<Text style={styles.logoGreen}>Route</Text>
-        </Text>
+        <Text style={styles.logoText}>Janito<Text style={styles.logoGreen}>Route</Text></Text>
         <TouchableOpacity onPress={onClose}>
-          <Text style={styles.menuIcon}><FontAwesome name="close" size={24} color="black" /></Text>
+          <Text><FontAwesome name="close" size={24} color="black" /></Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.dividerLine} />
 
-      {/* Main Action Area */}
       <View style={styles.content}>
-        
-        {/* SECTION 1: Current Role */}
         <Text style={styles.sectionLabel}>Current Role:</Text>
-        <View style={[styles.roleDisplayBox, { borderColor: '#0D47A1' }]}>
-          <Text style={[styles.roleDisplayText, { color: getRoleColor(currentRole) }]}>
-            {currentRole}
+        <View style={styles.roleDisplayBox}>
+          <Text style={[styles.roleDisplayText, { color: getRoleColor(role) }]}>
+            {role || 'GUEST'}
           </Text>
-          {currentRole !== 'GUEST' && (
-            <Text style={[styles.icon, { color: getRoleColor(currentRole) }]}>
-              {currentRole === 'ADMIN' ? <MaterialCommunityIcons name="account-star" size={24} color="black" /> : <FontAwesome5 name="user-alt" size={24} color="black" />}
-            </Text>
-          )}
         </View>
 
-        {/* SECTION 2: Change Role / Sign In (Conditional Rendering) */}
-        {currentRole === 'ADMIN' && (
-          <>
-            <Text style={styles.sectionLabel}>Change Role:</Text>
-            <TouchableOpacity style={styles.button} onPress={() => onRoleChange('GUEST')}>
-              <Text style={styles.buttonText}>GUEST</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.button} onPress={() => onRoleChange('JANITOR')}>
-              <Text style={styles.buttonText}>JANITOR <FontAwesome5 name="user-alt" size={18} color="black" /></Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {currentRole === 'JANITOR' && (
-          <>
-            <Text style={styles.sectionLabel}>Change Role:</Text>
-            <TouchableOpacity style={styles.button} onPress={() => onRoleChange('GUEST')}>
-              <Text style={styles.buttonText}>GUEST</Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.sectionLabel}>Sign in:</Text>
-            <TouchableOpacity style={styles.button} onPress={() => onRoleChange('ADMIN')}>
-              <Text style={[styles.buttonText, { color: '#8B0000' }]}>ADMIN 👤⭐</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {currentRole === 'GUEST' && (
-          <>
-            <Text style={styles.sectionLabel}>Sign in:</Text>
-            <TouchableOpacity style={styles.button} onPress={() => onRoleChange('JANITOR')}>
-              <Text style={styles.buttonText}>JANITOR 
-              </Text>
-              <FontAwesome5 name="user-alt" size={24} color="black" />
-            </TouchableOpacity>
-          </>
-        )}
-
-        {/* SECTION 3: Contact Support (Universal) */}
-        <Text style={styles.sectionLabel}>Contact Us:</Text>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>SUPPORT <MaterialIcons name="support-agent" size={24} color="black" /></Text>
+        {/* Instead of passing props, we call setRole directly from context */}
+        <Text style={styles.sectionLabel}>Switch Role:</Text>
+        <TouchableOpacity style={styles.button} onPress={() => setRole('GUEST')}>
+            <Text style={styles.buttonText}>GUEST</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.button} onPress={() => setJanitorLoginVisible(true)}>
+            <Text style={styles.buttonText}>JANITOR</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.button} onPress={() => setPasskeyVisible(true)}>
+            <Text style={styles.buttonText}>ADMIN</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Footer Branding Logo */}
-      <View style={styles.footer}>
-        <Image
-        source={require('@/assets/images/icon.png')}
-        style={styles.logo}/>
-      </View>
+      {/* These modals now just call setRole when successful */}
+      <AdminPasskeyModal
+          visible={passkeyVisible}
+          onClose={() => setPasskeyVisible(false)}
+          onSuccess={() => {
+            setPasskeyVisible(false);
+            setRole('ADMIN');
+            onClose(); 
+            router.replace('/(admin)/map');
+          }}
+        />
 
-        <AdminPasskeyModal
-        visible={passkeyVisible}
-        onClose={() => setPasskeyVisible(false)}
-        onSuccess={() => {
-          setPasskeyVisible(false);
-          onRoleChange('ADMIN'); // Success callback fires state upward to app router layout
-        }}
-      />
-
-      <JanitorLoginModal
-        visible={janitorLoginVisible}
-        onClose={() => setJanitorLoginVisible(false)}
-        onSuccess={() => {
-          setJanitorLoginVisible(false);
-          onRoleChange('JANITOR'); // Propagates the validated credentials state update upward
-        }}
-      />
-
+        <JanitorPasskeyModal
+          visible={janitorLoginVisible}
+          onClose={() => setJanitorLoginVisible(false)}
+          onSuccess={() => {
+            setJanitorLoginVisible(false);
+            setRole('JANITOR');
+            onClose(); 
+            router.replace('/(janitor)/janitor');
+          }}
+        />
     </SafeAreaView>
   );
 }
@@ -142,7 +90,7 @@ const styles = StyleSheet.create({
   sidebarContainer: {
     position: 'absolute',
     top: 0,
-    right: 0, // Swappable to left: 0 depending on your exact drawer preference
+    right: 0, 
     width: width * 0.75, // Takes up 75% of the screen width
     height: '100%',
     backgroundColor: '#B3D7E8', // Light blue background from your wireframe
@@ -197,3 +145,5 @@ const styles = StyleSheet.create({
    height:150,
   },
 });
+
+
