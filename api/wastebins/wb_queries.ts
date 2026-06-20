@@ -313,6 +313,143 @@ export const deleteWastebin = async (binId: string) => {
   }
 };
 
+export interface AreaPriorityRow {
+  area_id: string;
+  area_name: string;
+  total_bins: number;
+  full_count: number;
+  half_full_count: number;
+  empty_count: number;
+  priority_score: number;
+}
+
+/**
+ * Fetches all areas combined with active wastebin fill-rate metrics
+ * sorted descending by the amount of urgent attention required.
+ */
+export const fetchAreasByUrgency = async (): Promise<{ success: boolean; data: AreaPriorityRow[]; error?: any }> => {
+  try {
+    // 1. Fetch entire structure from areas -> landmarks -> wastebins
+    const { data: areas, error } = await supabase
+      .from('areas')
+      .select(`
+        area_id,
+        area_name,
+        landmarks (
+          landmark_id,
+          wastebins (
+            wastebin_id,
+            status
+          )
+        )
+      `);
+
+    if (error) throw error;
+    if (!areas) return { success: true, data: [] };
+
+    // 2. Map and count statuses dynamically
+    const processedAreas: AreaPriorityRow[] = areas.map((area: any) => {
+      let total_bins = 0;
+      let full_count = 0;
+      let half_full_count = 0;
+      let empty_count = 0;
+
+      area.landmarks?.forEach((landmark: any) => {
+        landmark.wastebins?.forEach((bin: any) => {
+          total_bins++;
+          if (bin.status === 'full') {
+            full_count++;
+          } else if (bin.status === 'half-full') {
+            half_full_count++;
+          } else if (bin.status === 'empty') {
+            empty_count++;
+          }
+        });
+      });
+
+      // Priority calculation formula: Full bins = 3 pts, Half-Full bins = 1 pt
+      const priority_score = (full_count * 3) + (half_full_count * 1);
+
+      return {
+        area_id: String(area.area_id),
+        area_name: area.area_name || 'Unnamed Area',
+        total_bins,
+        full_count,
+        half_full_count,
+        empty_count,
+        priority_score,
+      };
+    });
+
+    // 3. Sort descending (highest priority score first)
+    const sortedAreas = processedAreas.sort((a, b) => b.priority_score - a.priority_score);
+
+    return { success: true, data: sortedAreas };
+  } catch (error: any) {
+    console.error("Failed compiling dashboard metrics:", error);
+    return { success: false, data: [], error };
+  }
+};
+
+export interface RecentActivityRow {
+  wastebin_id: string;
+  status: 'empty' | 'half-full' | 'full';
+  updated_at: string;
+  area_name: string;
+}
+
+/**
+ * Fetches the most recently modified wastebins across all areas
+ * to act as a zero-maintenance live operations stream.
+ */
+export const fetchRecentActivityStream = async (limit = 15): Promise<RecentActivityRow[]> => {
+  try {
+    // Pull areas -> landmarks -> wastebins all at once
+    const { data: areas, error } = await supabase
+      .from('areas')
+      .select(`
+        area_name,
+        landmarks (
+          wastebins (
+            wastebin_id,
+            status,
+            updated_at
+          )
+        )
+      `);
+
+    if (error) throw error;
+    if (!areas) return [];
+
+    const allBins: RecentActivityRow[] = [];
+
+    // Flatten the nested structure into a single list of bins with their area name
+    areas.forEach((area: any) => {
+      area.landmarks?.forEach((landmark: any) => {
+        landmark.wastebins?.forEach((bin: any) => {
+          // Only include bins that actually have an updated_at timestamp
+          if (bin.updated_at) {
+            allBins.push({
+              wastebin_id: bin.wastebin_id,
+              status: bin.status,
+              updated_at: bin.updated_at,
+              area_name: area.area_name || 'Unknown Area',
+            });
+          }
+        });
+      });
+    });
+
+    // Sort by updated_at descending (most recent first) and slice to the limit
+    return allBins
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, limit);
+
+  } catch (error) {
+    console.error("Error fetching activity stream:", error);
+    return [];
+  }
+};
 
 
 /* Reminders:
