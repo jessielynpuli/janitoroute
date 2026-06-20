@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { s } from 'react-native-size-matters';
 
@@ -7,7 +8,7 @@ interface MenuButtonProps {
 }
 
 const BUTTON_SIZE = s(40);
-const ICON_SIZE = BUTTON_SIZE * 0.6;
+const ICON_SIZE = BUTTON_SIZE * 0.8;
 
 const MenuButton = ({ onPress }: MenuButtonProps) => {
   return (
@@ -16,7 +17,7 @@ const MenuButton = ({ onPress }: MenuButtonProps) => {
         <Ionicons 
           name="menu"
           size={ICON_SIZE}
-          color="#ffffff"
+          color="#097000"
         />
       </TouchableOpacity>
     </View>
@@ -31,11 +32,12 @@ const styles = StyleSheet.create({
   },
   squareButton: {
     width: '100%',
-    height: '100%',  
-    borderRadius: 5,         
-    backgroundColor: '#007AFF',  
+    height: '100%',       
+    backgroundColor: '#D9EAD3',  
     justifyContent: 'center',
     alignItems: 'center',
+    borderColor: '#097000',
+    borderWidth: 2,
     
     // Rendering security layers
     overflow: 'hidden',
@@ -46,11 +48,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.27,
     shadowRadius: 4.65,
     elevation: 6,
-  },
-  buttonText: {
-    color: '#ffffff',            
-    fontSize: 15,
-    fontWeight: '700',
-    textAlign: 'center',
   },
 });

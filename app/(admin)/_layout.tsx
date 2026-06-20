@@ -12,7 +12,7 @@ export default function AdminLayout() {
     'Inter-Font': require('@/assets/fonts/Inter_18pt-SemiBold.ttf'),
   });
 
-  if (!loaded) return null; // Wait for fonts before rendering
+  if (!loaded) return null; 
 
   return (
     <Tabs

@@ -3,8 +3,8 @@ import MenuButton from '@/components/MenuButton';
 import Sidebar from '@/components/SideBar';
 import { AuthProvider } from '@/constants/AuthContext';
 import { Stack } from 'expo-router';
-import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { default as React, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function RootLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -12,11 +12,18 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <View style={styles.container}>
-        {/* The Stack now handles the Header buttons universally */}
         <Stack
           screenOptions={{
             headerShown: true,
-            headerTitleAlign: 'center', // <--- THIS CENTERS THE TITLE
+            headerTitleAlign: 'center',
+            headerShadowVisible: false, 
+           headerTitle: () => (
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.logoText}>
+                Janito<Text style={styles.logoGreen}>Route</Text>
+              </Text>
+            </View>
+            ),
             headerLeft: () => (
               <View style={styles.headerLeftPadding}>
                 <MenuButton onPress={() => setIsSidebarOpen(true)} />
@@ -29,12 +36,11 @@ export default function RootLayout() {
             ),
           }}
         >
-          <Stack.Screen name="index" options={{ title: 'Home' }} />
-          <Stack.Screen name="(admin)" options={{ title: 'Admin' }} />
-          <Stack.Screen name="(janitor)" options={{ title: 'Janitor' }} />
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(admin)" />
+          <Stack.Screen name="(janitor)" />
         </Stack>
 
-        {/* Sidebar Overlay (Universal) */}
         {isSidebarOpen && (
           <Sidebar onClose={() => setIsSidebarOpen(false)} />
         )}
@@ -50,4 +56,16 @@ const styles = StyleSheet.create({
   },
   headerLeftPadding: { paddingLeft: 10 },
   headerRightPadding: { paddingRight: 10 },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoText: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#0D47A1' // Match your sidebar blue
+  },
+  logoGreen: { 
+    color: '#1B5E20' // Match your sidebar green
+  },
 });
