@@ -10,6 +10,8 @@ import { AddLandmarkButton } from '@/components/addLandmark';
 import { AddTrashbinButton } from '@/components/addTrashbin';
 import { RemoveButton } from '@/components/RemoveButton';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 //import api functions
 import { DBEdge, fetchNetworkEdges, insertNetworkEdges, UIWeight, WEIGHT_MAP } from '@/api/edges/edges_queries';
 import { createArea, createLandmark, createWastebin, deleteArea, deleteLandmark, deleteWastebin, fetchAllAreas, fetchMapDataByArea, updateLandmark, updateWastebin } from '@/api/wastebins/wb_queries';
@@ -17,9 +19,13 @@ import { s } from 'react-native-size-matters';
 
 import { buildNodeCoordinates } from '@/hooks/graphUtils';
 
+
+
 // Then in your component:
 
 export default function IndexScreen() {
+  const insets = useSafeAreaInsets();
+  
   const [areaData, setAreaData] = useState<DropdownItem[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [mapData, setMapData] = useState<LandmarkRow[]>([]);
@@ -774,6 +780,7 @@ useEffect(() => {
 
 
   return (
+    <View style={[styles.container, { paddingBottom: insets.bottom + 85 }]}>
     <View style={styles.container}>
 
         <View style = {styles.dropdownContainer}>
@@ -842,6 +849,7 @@ useEffect(() => {
   }}
   existingNodesList={availableNodesList} 
 />
+    </View>
     </View>
   );
 }

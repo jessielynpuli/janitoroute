@@ -1,12 +1,15 @@
-import React from 'react';
-import { StyleSheet, Text, View, SafeAreaView, ScrollView } from 'react-native';
-import StatCard from '@/components/StatCard';
 import HotspotStats from '@/components/HotspotStats';
+import StatCard from '@/components/StatCard';
 import TaskList from '@/components/TaskList';
+import React from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AdminDashboard() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: insets.bottom + 85 }]}>
      
       {/* Content Areas */}
       <ScrollView contentContainerStyle={styles.scrollContent}>

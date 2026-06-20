@@ -1,29 +1,33 @@
-// 📝 Replace the top block of map.tsx down to IndexScreen() with this:
-
-import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, View, Text, Animated, PanResponder, TouchableOpacity } from 'react-native';
-import AreaDropdown, { DropdownItem } from '@/components/areaDropdown'; 
-import NodalGraph, { WastebinRow, LandmarkRow } from '@/components/GraphNodes';
-import { ReportButton } from '@/components/ReportButton';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from 'react-native-size-matters';
 
+// Component layout extensions
+import AreaDropdown, { DropdownItem } from '@/components/areaDropdown';
+import { BinStatusModal } from '@/components/BinStatusModal';
+import NodalGraph, { LandmarkRow } from '@/components/GraphNodes';
+
 // Import real API hooks from your queries
-import { fetchAllAreas, fetchMapDataByArea } from '@/api/wastebins/wb_queries';
-import { fetchNetworkEdges } from '@/api/edges/edges_queries';
-import { DBEdge } from '@/api/edges/edges_queries';
+import { DBEdge, fetchNetworkEdges } from '@/api/edges/edges_queries';
+import { fetchAllAreas, fetchMapDataByArea, updateWastebin } from '@/api/wastebins/wb_queries';
 
 export default function IndexScreen() {
+  const insets = useSafeAreaInsets();
+  
+  // Core Map and Infrastructure States
   const [areaData, setAreaData] = useState<DropdownItem[]>([]);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [mapData, setMapData] = useState<LandmarkRow[]>([]);
   const [edgesData, setEdgesData] = useState<DBEdge[]>([]);
 
+  // --- BIN STATUS MODAL STATES ---
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [targetedBinId, setTargetedBinId] = useState<string | null>(null);
+
   // Zooming & Panning Animation States
   const [scaleValue] = useState(new Animated.Value(1));
   const pan = useRef(new Animated.ValueXY({ x: -50, y: -50 })).current;
-
-
-  // 📝 Insert this code right below your state declarations inside IndexScreen():
 
   // 1. Initialize PanResponder for moving across the 1000x1000 matrix boundary
   const panResponder = useRef(
@@ -81,13 +85,10 @@ export default function IndexScreen() {
     }).start();
   };
 
-  // 📝 Replace the old mock data useEffect statement with these synchronization blocks:
-
-  // 1. Core data refreshing workers
+  // 3. Core data refreshing workers
   const refreshActiveCanvasMap = async () => {
     if (!selectedAreaId || selectedAreaId === "undefined") {
       setMapData([]);
-      setEdgesData([]);
       return;
     }
     try {
@@ -112,7 +113,7 @@ export default function IndexScreen() {
     }
   };
 
-  // 2. Dropdown Area Initializer (Filters out admin CRUD choices like 'add_new')
+  // 4. Dropdown Area Initializer 
   const loadAreas = async () => {
     try {
       const data = await fetchAllAreas();
@@ -121,12 +122,16 @@ export default function IndexScreen() {
         value: String(area.area_id), 
       }));
       setAreaData(dbAreas);
+
+      if (dbAreas.length > 0 && !selectedAreaId) {
+        setSelectedAreaId(String(dbAreas[0].value));
+      }
     } catch (error) {
       console.error("Error loading workspace areas:", error);
     }
   };
 
-  // 3. Life Cycle Hooks
+  // 5. Life Cycle Hooks
   useEffect(() => {
     loadAreas();
   }, []);
@@ -141,13 +146,63 @@ export default function IndexScreen() {
     console.log('User synced viewport area:', item.label);
   };
 
-  const handleReportPress = () => console.log('Report clicked!');
+  // --- NODE INTERACTION ROUTER ---
+  const handleNodePress = (id: string, type: 'landmark' | 'wastebin') => {
+    if (type === 'wastebin') {
+      setTargetedBinId(id);
+      setStatusModalVisible(true);
+    } else {
+      console.log(`User clicked landmark anchor node context: ${id}`);
+    }
+  };
 
+  // --- REPORT TRIGGER HANDLER ---
+  const handleReportPress = () => {
+    if (targetedBinId) {
+      setStatusModalVisible(true);
+    } else {
+      Alert.alert("Select a Bin First", "Please tap any wastebin icon on the graph network first to configure its report status.");
+    }
+  };
 
-  // 📝 Replace the return statement code inside map.tsx with this layout block:
+  // --- DATABASE UPDATE SYNCHRONIZER ---
+  const handleStatusUpdate = async (newStatus: 'empty' | 'half-full' | 'full') => {
+    if (!targetedBinId) return;
+
+    console.log(`[DB UPDATE] Sending status report for Bin ${targetedBinId} to: ${newStatus}`);
+
+    try {
+      const result = await updateWastebin(targetedBinId, { 
+        status: newStatus 
+      });
+
+      if (result.success) {
+        Alert.alert("Report Submitted", "Thank you! The bin status update has been broadcasted.");
+        await refreshActiveCanvasMap();
+      } else {
+        // Fallback local update UI mapping optimization if offline/network error happens
+        setMapData((prevData) =>
+          prevData.map((landmark) => ({
+            ...landmark,
+            wastebins: landmark.wastebins?.map((bin) =>
+              bin.wastebin_id === targetedBinId ? { ...bin, status: newStatus } : bin
+            ),
+          }))
+        );
+        console.error("Failed to sync report state to database:", result.error);
+      }
+    } catch (error) {
+      console.error("Error during wastebin status transaction:", error);
+    }
+
+    setStatusModalVisible(false);
+    // Note: We keep the targetedBinId active so they can hit the 'Report' CTA multiple times if needed, 
+    // or you can clear it based on preference. Clearing it here forces them to select again.
+    setTargetedBinId(null);
+  };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: insets.bottom + 85 }]}>
       <View style={styles.dropdownContainer}>
         <AreaDropdown 
           data={areaData} 
@@ -168,8 +223,8 @@ export default function IndexScreen() {
           <NodalGraph 
             mapData={mapData} 
             edges={edgesData}
-            isDeleteMode={false} // Users cannot delete nodes
-            onNodePress={(id, type) => console.log(`User clicked node context: ${type} - ${id}`)}
+            isDeleteMode={false} 
+            onNodePress={handleNodePress}
           />
         </Animated.View>
 
@@ -183,31 +238,36 @@ export default function IndexScreen() {
         </View>
       </View>
 
-      <View style={styles.buttonWrapper}>
-        <ReportButton onPress={handleReportPress}/>
-      </View>
+      {/* Action overlay dialog window popup context */}
+      <BinStatusModal 
+        visible={statusModalVisible}
+        onClose={() => {
+          setStatusModalVisible(false);
+          setTargetedBinId(null);
+        }}
+        onSelect={handleStatusUpdate}
+      />
     </View>
   );
 }
-// 📝 Append the .canvas and .zoom styles inside your StyleSheet object at the bottom of map.tsx:
+
 const styles = StyleSheet.create({
-    container: {
+  container: {
     flexDirection: 'column',
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: '#EFFAFF', // Using the soft background color from your Figma image
+    backgroundColor: '#EFFAFF', 
     padding: 20,
   },
   dropdownContainer: {
-    // CRITICAL: zIndex ensures the dropdown menu renders OVER the graph
     zIndex: 10, 
-    marginBottom: 20, // Space between dropdown and graph
+    marginBottom: 20, 
     justifyContent: 'center',
   },
   buttonWrapper: {
     paddingHorizontal: 20,
-    marginTop: 10,             // Spacing directly under the blue graph window
-    marginBottom: 10,          // Spacing between the button and the nav bar
+    marginTop: 10,             
+    marginBottom: 10,          
   },
   graphWindow: {
     flex: 1, 

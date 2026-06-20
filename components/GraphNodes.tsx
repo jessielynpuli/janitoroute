@@ -1,10 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { Image, TouchableOpacity, StyleSheet, View } from 'react-native';
-import Svg, { Line, Circle } from 'react-native-svg'; // <--- IMPORT SVG COMPONENTS
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Svg, { Circle, Line } from 'react-native-svg';
 
-import { MapNode } from '@/components/MapNodes'; 
-import { DBEdge } from '@/api/edges/edges_queries'; 
-
+import { DBEdge } from '@/api/edges/edges_queries';
+import { MapNode } from '@/components/MapNodes';
 import { buildNodeCoordinates } from '@/hooks/graphUtils';
 
 export interface WastebinRow {
@@ -30,137 +29,107 @@ export interface NodalGraphProps {
   mapData: LandmarkRow[];
   edges: DBEdge[]; 
   isDeleteMode: boolean;
-  onNodePress: (id: string, type: 'landmark' | 'wastebin') => void;
+  onNodePress: (id: string, type: 'landmark' | 'wastebin', nodeDetails?: any) => void;
+  // Dynamic highlighting hook for BFS engine runs
+  highlightedEdges?: Array<{ from: string; to: string }>;
+  selectedStartNodeId?: string | null;
 }
 
-export default function NodalGraph({ mapData, edges = [], isDeleteMode, onNodePress }: NodalGraphProps) {
+export default function NodalGraph({ 
+  mapData, 
+  edges = [], 
+  isDeleteMode, 
+  onNodePress,
+  highlightedEdges = [],
+  selectedStartNodeId = null
+}: NodalGraphProps) {
   
-  // ==========================================
-  // 1. BUILD A COORDINATE DICTIONARY
-  // Creates a fast lookup table for X/Y points so we can connect the lines
-  // ==========================================
-  const nodeCoordinates = useMemo(() => buildNodeCoordinates(mapData), [mapData]);;
-  
-  // ==========================================
-  // 2. FLATTEN GRAPH NODES
-  // ==========================================
-  
+  const nodeCoordinates = useMemo(() => buildNodeCoordinates(mapData), [mapData]);
+
   const renderNodes = () => {
-  return (mapData || []).flatMap((landmark: LandmarkRow) => { // Type the landmark
-    const landmarkNode = (
-      <MapNode
-        key={`landmark-${landmark.landmark_id}`}
-        id={landmark.landmark_id}
-        name={landmark.landmark_name}
-        type="landmark"
-        x={landmark.x_position}
-        y={landmark.y_position}
-        isDeleteMode={isDeleteMode}
-        onPress={(id, type) => onNodePress?.(id,type)}
-      />
-    );
-
-    // Explicitly type the bin variable here
-    const wastebinNodes = (landmark.wastebins || []).map((bin: WastebinRow) => {
-      // Calculate absolute position
-      const absX = Number(landmark.x_position) + Number(bin.x_position);
-      const absY = Number(landmark.y_position) + Number(bin.y_position);
-
-      return (
+    return (mapData || []).flatMap((landmark: LandmarkRow) => {
+      const isSelectedStart = selectedStartNodeId === landmark.landmark_id;
+      
+      const landmarkNode = (
         <MapNode
-          key={`wastebin-${bin.wastebin_id}`}
-          id={bin.wastebin_id}
-          name={bin.description || 'Trashbin'}
-          type="wastebin"
-          status={bin.status}
-          x={absX}
-          y={absY}
+          key={`landmark-${landmark.landmark_id}`}
+          id={landmark.landmark_id}
+          name={landmark.landmark_name}
+          type="landmark"
+          x={landmark.x_position}
+          y={landmark.y_position}
           isDeleteMode={isDeleteMode}
-          onPress={(id, type) => onNodePress?.(id,type)}
+          // Highlight border if selected as start node
+          isSelected={isSelectedStart} 
+          onPress={(id, type) => onNodePress?.(id, type, landmark)}
         />
       );
-    });
-    
-    return [landmarkNode, ...wastebinNodes];
-  });
-};
 
-  //console.log("Start X Y: ", startNode.x, startNode.y)
+      const wastebinNodes = (landmark.wastebins || []).map((bin: WastebinRow) => {
+        const absX = Number(landmark.x_position) + Number(bin.x_position);
+        const absY = Number(landmark.y_position) + Number(bin.y_position);
+        const isSelectedBinStart = selectedStartNodeId === bin.wastebin_id;
+
+        return (
+          <MapNode
+            key={`wastebin-${bin.wastebin_id}`}
+            id={bin.wastebin_id}
+            name={bin.description || 'Trashbin'}
+            type="wastebin"
+            status={bin.status}
+            x={absX}
+            y={absY}
+            isDeleteMode={isDeleteMode}
+            isSelected={isSelectedBinStart}
+            onPress={(id, type) => onNodePress?.(id, type, bin)}
+          />
+        );
+      });
+      
+      return [landmarkNode, ...wastebinNodes];
+    });
+  };
 
   return (
-
-    <View style = {{flex: 1, position: 'relative'}} pointerEvents="box-none">
-
-    <View style={styles.canvasContainer} pointerEvents="box-none">
-      
-      {/* ========================================== */}
-      {/* LAYER 1: TRUE VECTOR GRAPH (Background)      */}
-      {/* ========================================== */}
-      <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-        {edges.map((edge) => {
-
-          const startNode = nodeCoordinates[edge.from_node_id];
-          const endNode = nodeCoordinates[edge.to_node_id];
-          console.log("Startnode: ", startNode)
-          console.log("Endnode: ", endNode)
-          
-          // ADD THIS LOG:
-            console.log(`DEBUG: Rendering Edge ${edge.edge_id}`, {
-              exists: !!startNode && !!endNode,
-              startCoord: startNode,
-              endCoord: endNode
-            });
-          // If either node is missing from this specific area map, don't draw the line
-          
-          if (!startNode || !endNode) {
-            console.log(`Skipping Edge ${edge.edge_id}: Node missing from mapData!`, {
-              from: edge.from_node_id,
-              to: edge.to_node_id,
-              coordsFound: !!startNode && !!endNode
-            });
-            return null;
-          }
-
-          // Visual styling based on weight (Adjacent = Green, Midway = Yellow, Remote = Red)
-          //const edgeColor = edge.weight === 1 ? '#B0BEC5' : edge.weight === 2 ? '#F59E0B' : '#EF4444';
-          //const edgeThickness = edge.weight === 1 ? 3 : 2;
-
-
-          return (
+    <View style={{ flex: 1, position: 'relative' }} pointerEvents="box-none">
+      <View style={styles.canvasContainer} pointerEvents="box-none">
+        <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+          {edges.map((edge) => {
+            const startNode = nodeCoordinates[edge.from_node_id];
+            const endNode = nodeCoordinates[edge.to_node_id];
             
-            <React.Fragment key = {edge.edge_id}>
-            
-            <Line
-            
-              key={edge.edge_id}
-              x1={Number(startNode.x )} // Start X
-              y1={Number(startNode.y) } // Start Y
-              x2={Number(endNode.x) }   // End X
-              y2={Number(endNode.y) }   // End Y
-              stroke={'#B0BEC5'}
-              strokeWidth={3}
-              strokeLinecap="round" // Optional: adds smooth rounded caps to the line ends
-            />
+            if (!startNode || !endNode) return null;
 
-            {/* DEBUG: Crosshair at target */}
-            <Line x1={Number(endNode.x) - 10} y1={Number(endNode.y)} x2={Number(endNode.x) + 10} y2={Number(endNode.y)} stroke="red" strokeWidth="2" />
-            <Line x1={Number(endNode.x)} y1={Number(endNode.y) - 10} x2={Number(endNode.x)} y2={Number(endNode.y) + 10} stroke="red" strokeWidth="2" />
+            // Check if this bidirectional edge direction is part of the highlighted BFS tracking array
+            const isHighlighted = highlightedEdges.some(
+              h => (h.from === edge.from_node_id && h.to === edge.to_node_id) ||
+                   (h.from === edge.to_node_id && h.to === edge.from_node_id)
+            );
 
-            <Circle 
-                cx={endNode.x} 
-                cy={endNode.y} 
-                r="6" 
-                fill="red" 
-              />
-            </React.Fragment>
-          );
-        })}
-      </Svg>
-      
-      {/* ========================================== */}
-      {/* LAYER 2: INTERACTIVE NODES (Foreground)      */}
-      {/* ========================================== */}
-      {renderNodes()}
+            return (
+              <React.Fragment key={edge.edge_id}>
+                <Line
+                  x1={Number(startNode.x)}
+                  y1={Number(startNode.y)}
+                  x2={Number(endNode.x)}
+                  y2={Number(endNode.y)}
+                  stroke={isHighlighted ? '#D32F2F' : '#B0BEC5'}
+                  strokeWidth={isHighlighted ? 6 : 3}
+                  strokeLinecap="round"
+                />
+                {isHighlighted && (
+                  <Circle 
+                    cx={endNode.x} 
+                    cy={endNode.y} 
+                    r="5" 
+                    fill="#D32F2F" 
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </Svg>
+        {renderNodes()}
       </View>
     </View>
   );
@@ -173,7 +142,5 @@ const styles = StyleSheet.create({
     height: '100%',
     zIndex: 10,
     position: 'absolute', 
-    padding: 0,
-    margin: 0,
   },
 });

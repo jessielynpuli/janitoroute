@@ -1,7 +1,5 @@
 import React from 'react';
-import { View, Image, StyleSheet, Text, TouchableOpacity } from 'react-native';
-//import { NODE_ASSETS, NodeType } from './nodeAssets'; // Path to your dictionary asset map
-
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // Define your static local layout asset paths explicitly
 export const NODE_ASSETS = {
@@ -23,9 +21,9 @@ interface MapNodeProps {
   x: number;
   y: number;
   isDeleteMode: boolean;
+  isSelected?: boolean; // <--- 1. ADDED OPTIONAL PROP HERE FOR THE PATHFINDER HIGHLIGHT
   onPress: (id: string, type: NodeType) => void;
 }
-
 
 export const MapNode: React.FC<MapNodeProps> = ({
   id,
@@ -35,11 +33,11 @@ export const MapNode: React.FC<MapNodeProps> = ({
   x,
   y,
   isDeleteMode,
+  isSelected = false, // <--- 2. DEFAULT IT TO FALSE
   onPress,
 }) => {
 
-  // 1. Force the database values into strict numbers
-  // If the data is broken/missing, it safely defaults to 100 so it appears on screen!
+  // Force the database values into strict numbers
   const safeX = Number(x) || 100; 
   const safeY = Number(y) || 100;
 
@@ -55,32 +53,30 @@ export const MapNode: React.FC<MapNodeProps> = ({
     }
   }
 
-  console.log(`Node [${name}] rendering with state [${status}] at: ${safeX}, ${safeY}`);
-  
   return (
-    
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={() => onPress(id, type)}
       style={[
         styles.nodeWrapper,
         {
-          // Positioning them absolutely on the canvas grid matrix based on your DB coordinates
           left: safeX,
           top: safeY,
-          
         },
       ]}
     >
-      {/* 1. Visual Icon Container Box */}
-      <View style={[styles.iconContainer, isDeleteMode && styles.deleteTargetActive]}>
+      {/* 3. INJECT THE ISSELECTED STYLE OVERRIDE TO THE CONTAINER */}
+      <View style={[
+        styles.iconContainer, 
+        isDeleteMode && styles.deleteTargetActive,
+        isSelected && styles.selectedTargetActive // <--- Highlight applied here
+      ]}>
         <Image 
           source={iconSource} 
           style={styles.vectorImage} 
           resizeMode="contain" 
         />
         
-        {/* If delete mode is active, overlay a small indicator badge layout */}
         {isDeleteMode && (
           <View style={styles.deleteBadge}>
             <Text style={styles.deleteBadgeText}>×</Text>
@@ -88,7 +84,6 @@ export const MapNode: React.FC<MapNodeProps> = ({
         )}
       </View>
 
-      {/* 2. Text Label under the icon */}
       <Text numberOfLines={1} style={styles.nodeLabel}>
         {name}
       </Text>
@@ -101,9 +96,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 60,  // Bound box size limits
+    width: 60,  
     height: 60,
-    transform: [{ translateX: -30 }, { translateY: -30 }], // Anchors coordinates to the exact middle of the icon!
+    transform: [{ translateX: -30 }, { translateY: -30 }], 
     zIndex: 99,  
   },
   iconContainer: {
@@ -120,6 +115,13 @@ const styles = StyleSheet.create({
   deleteTargetActive: {
     borderColor: '#FF6B6B',
     backgroundColor: '#FFE3E3',
+  },
+  // 4. ADDED HIGHLIGHT BORDER DESIGN (Gold / Yellow Outline for high contrast)
+  selectedTargetActive: {
+    borderColor: '#FFD700',
+    borderWidth: 3.5,
+    backgroundColor: '#FFFDE7',
+    transform: [{ scale: 1.1 }], // Pop it slightly bigger so the user knows it's chosen!
   },
   vectorImage: {
     width: 32,

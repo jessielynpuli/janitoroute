@@ -1,7 +1,6 @@
-import { Colors } from '@/constants/theme';
-import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from 'react-native-size-matters';
 
 // Component layout extensions
@@ -9,34 +8,28 @@ import AreaDropdown, { DropdownItem } from '@/components/areaDropdown';
 import { BinStatusModal } from '@/components/BinStatusModal';
 import NodalGraph, { LandmarkRow } from '@/components/GraphNodes';
 
-// Real API integration points
+// Import real API hooks from your queries
 import { DBEdge, fetchNetworkEdges } from '@/api/edges/edges_queries';
 import { fetchAllAreas, fetchMapDataByArea, updateWastebin } from '@/api/wastebins/wb_queries';
-import JanitorScreen from '@/app/(janitor)/janitor';
 
-type Role = 'ADMIN' | 'JANITOR' | 'GUEST';
-
-export default function HomeScreen() {
+export default function IndexScreen() {
+  const insets = useSafeAreaInsets();
+  
   // Core Map and Infrastructure States
-  const [areaData, setAreaData] = useState<DropdownItem[]>([]); 
-  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null); 
+  const [areaData, setAreaData] = useState<DropdownItem[]>([]);
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [mapData, setMapData] = useState<LandmarkRow[]>([]);
   const [edgesData, setEdgesData] = useState<DBEdge[]>([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const router = useRouter();
-  
-  // -- currentRole for sidebar menu
-  const [currentRole, setCurrentRole] = useState<Role>('GUEST'); 
 
   // --- BIN STATUS MODAL STATES ---
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [targetedBinId, setTargetedBinId] = useState<string | null>(null);
 
-  // --- ZOOMING & PANNING ANIMATION STATES ---
+  // Zooming & Panning Animation States
   const [scaleValue] = useState(new Animated.Value(1));
   const pan = useRef(new Animated.ValueXY({ x: -50, y: -50 })).current;
 
-  // Initialize Canvas Grid PanResponder matrix boundary
+  // 1. Initialize PanResponder for moving across the 1000x1000 matrix boundary
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (evt, gestureState) => {
@@ -77,7 +70,7 @@ export default function HomeScreen() {
     })
   ).current;
 
-  // Zoom Button Handlers
+  // 2. Zoom Button Handlers
   const handleZoom = (type: 'IN' | 'OUT') => {
     let currentScale = (scaleValue as any)._value;
     let nextScale = type === 'IN' ? currentScale + 0.2 : currentScale - 0.2;
@@ -92,33 +85,22 @@ export default function HomeScreen() {
     }).start();
   };
 
-  // --- DATABASE DATA FRESHENERS ---
-  const loadAreas = async () => {
-    try {
-      const data = await fetchAllAreas();
-      const dbAreas: DropdownItem[] = (data || []).map((area: any) => ({
-        label: area.area_name,
-        value: String(area.area_id), 
-      }));
-      setAreaData(dbAreas);
-      
-      if (dbAreas.length > 0 && !selectedAreaId) {
-        setSelectedAreaId(String(dbAreas[0].value));
-      }
-    } catch (error) {
-      console.error("Error loading workspace areas:", error);
-    }
-  };
-
+  // 3. Core data refreshing workers
   const refreshActiveCanvasMap = async () => {
-    if (!selectedAreaId) return;
+    if (!selectedAreaId || selectedAreaId === "undefined") {
+      setMapData([]);
+      return;
+    }
     try {
       const result = await fetchMapDataByArea(selectedAreaId);
       if (result.success && Array.isArray(result.data)) {
         setMapData(result.data as LandmarkRow[]);
+      } else {
+        setMapData([]);
       }
     } catch (error) {
-      console.error("Home viewport hydration error:", error);
+      console.error("Failed to refresh user canvas map viewport:", error);
+      setMapData([]);
     }
   };
 
@@ -127,11 +109,29 @@ export default function HomeScreen() {
       const edges = await fetchNetworkEdges();
       setEdgesData(edges);
     } catch (error) {
-      console.error("Home edge hydration error:", error);
+      console.error("Failed to sync edges into user layout viewport:", error);
     }
   };
 
-  // Initializing lifecycle load
+  // 4. Dropdown Area Initializer 
+  const loadAreas = async () => {
+    try {
+      const data = await fetchAllAreas();
+      const dbAreas: DropdownItem[] = (data || []).map((area: any) => ({
+        label: area.area_name,
+        value: String(area.area_id), 
+      }));
+      setAreaData(dbAreas);
+
+      if (dbAreas.length > 0 && !selectedAreaId) {
+        setSelectedAreaId(String(dbAreas[0].value));
+      }
+    } catch (error) {
+      console.error("Error loading workspace areas:", error);
+    }
+  };
+
+  // 5. Life Cycle Hooks
   useEffect(() => {
     loadAreas();
   }, []);
@@ -141,13 +141,12 @@ export default function HomeScreen() {
     refreshEdges();
   }, [selectedAreaId]);
 
-  // Dropdown option click coordinator
   const handleAreaSelect = (item: DropdownItem) => {
     setSelectedAreaId(String(item.value));
-    console.log('User synced layout viewport area to:', item.label);
+    console.log('User synced viewport area:', item.label);
   };
 
-  // --- NODE TOUCH CONTROLLER INTERCEPT ---
+  // --- NODE INTERACTION ROUTER ---
   const handleNodePress = (id: string, type: 'landmark' | 'wastebin') => {
     if (type === 'wastebin') {
       setTargetedBinId(id);
@@ -157,10 +156,20 @@ export default function HomeScreen() {
     }
   };
 
+  // --- REPORT TRIGGER HANDLER ---
+  const handleReportPress = () => {
+    if (targetedBinId) {
+      setStatusModalVisible(true);
+    } else {
+      Alert.alert("Select a Bin First", "Please tap any wastebin icon on the graph network first to configure its report status.");
+    }
+  };
+
+  // --- DATABASE UPDATE SYNCHRONIZER ---
   const handleStatusUpdate = async (newStatus: 'empty' | 'half-full' | 'full') => {
     if (!targetedBinId) return;
 
-    console.log(`[DB UPDATE] Sending status change for Bin ${targetedBinId} to: ${newStatus}`);
+    console.log(`[DB UPDATE] Sending status report for Bin ${targetedBinId} to: ${newStatus}`);
 
     try {
       const result = await updateWastebin(targetedBinId, { 
@@ -168,9 +177,10 @@ export default function HomeScreen() {
       });
 
       if (result.success) {
-        console.log("Successfully synchronized bin status with Supabase!");
+        Alert.alert("Report Submitted", "Thank you! The bin status update has been broadcasted.");
         await refreshActiveCanvasMap();
       } else {
+        // Fallback local update UI mapping optimization if offline/network error happens
         setMapData((prevData) =>
           prevData.map((landmark) => ({
             ...landmark,
@@ -179,112 +189,97 @@ export default function HomeScreen() {
             ),
           }))
         );
-        console.error("Failed to sync status to database:", result.error);
+        console.error("Failed to sync report state to database:", result.error);
       }
     } catch (error) {
-      console.error("Error during wastebin database status update:", error);
+      console.error("Error during wastebin status transaction:", error);
     }
 
     setStatusModalVisible(false);
+    // Note: We keep the targetedBinId active so they can hit the 'Report' CTA multiple times if needed, 
+    // or you can clear it based on preference. Clearing it here forces them to select again.
     setTargetedBinId(null);
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors.background }]}>
+    <View style={[styles.container, { paddingBottom: insets.bottom + 85 }]}>
+      <View style={styles.dropdownContainer}>
+        <AreaDropdown 
+          data={areaData} 
+          placeholder="CHOOSE AREA" 
+          onSelect={handleAreaSelect} 
+          selectedValue={selectedAreaId}
+        />
+      </View>
 
-      {/* ========================================================= */}
-      {/* PLACE CONDITIONAL WORKSPACE SWITCHER HERE              */}
-      {/* ========================================================= */}
-      {currentRole === 'JANITOR' ? (
-      <JanitorScreen />
-      ) : (
-        <>
-          {/* INTEGRATED AREA SELECTOR DROPDOWN MODULE CONTAINER */}
-          <View style={styles.dropdownContainer}>
-            <AreaDropdown 
-              data={areaData} 
-              placeholder="CHOOSE AREA" 
-              onSelect={handleAreaSelect} 
-              selectedValue={selectedAreaId}
-            />
-          </View>
-
-          {/* Admin Quick Shortcut Navigation Toggle */}
-
-          {/* Full Map viewport frame inside home layout content window */}
-          <View style={styles.graphWindow}>
-            <Animated.View
-              {...panResponder.panHandlers}
-              style={[ 
-                styles.canvas, 
-                { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale: scaleValue }] }
-              ]}
-            >
-              <NodalGraph 
-                mapData={mapData} 
-                edges={edgesData}
-                isDeleteMode={false} 
-                onNodePress={handleNodePress} 
-              />
-            </Animated.View>
-
-            {/* Float Control Layer modules */}
-            <View style={styles.zoomControls}>
-              <TouchableOpacity style={styles.zoomBtn} onPress={() => handleZoom('IN')}>
-                <Text style={styles.zoomText}>+</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.zoomBtn} onPress={() => handleZoom('OUT')}>
-                <Text style={styles.zoomText}>−</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Action overlay dialog window popup layout */}
-          <BinStatusModal 
-            visible={statusModalVisible}
-            onClose={() => {
-              setStatusModalVisible(false);
-              setTargetedBinId(null);
-            }}
-            onSelect={handleStatusUpdate}
+      <View style={styles.graphWindow}>
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={[ 
+            styles.canvas, 
+            { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale: scaleValue }] }
+          ]}
+        >
+          <NodalGraph 
+            mapData={mapData} 
+            edges={edgesData}
+            isDeleteMode={false} 
+            onNodePress={handleNodePress}
           />
-        </>
-      )}
+        </Animated.View>
+
+        <View style={styles.zoomControls}>
+          <TouchableOpacity style={styles.zoomBtn} onPress={() => handleZoom('IN')}>
+            <Text style={styles.zoomText}>+</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.zoomBtn} onPress={() => handleZoom('OUT')}>
+            <Text style={styles.zoomText}>−</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Action overlay dialog window popup context */}
+      <BinStatusModal 
+        visible={statusModalVisible}
+        onClose={() => {
+          setStatusModalVisible(false);
+          setTargetedBinId(null);
+        }}
+        onSelect={handleStatusUpdate}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flexDirection: 'column',
     flex: 1,
-  },
-  welcomeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: s(20),
-    paddingTop: s(20),
-    marginTop: s(20),
+    justifyContent: 'center',
+    backgroundColor: '#EFFAFF', 
+    padding: 20,
   },
   dropdownContainer: {
     zIndex: 10, 
-    paddingHorizontal: s(20),
-    marginVertical: s(10),
+    marginBottom: 20, 
     justifyContent: 'center',
+  },
+  buttonWrapper: {
+    paddingHorizontal: 20,
+    marginTop: 10,             
+    marginBottom: 10,          
   },
   graphWindow: {
     flex: 1, 
     backgroundColor: '#B6D7E8', 
+    borderRadius: 0,
     borderColor: '#6D6D6D',
     borderWidth: 3,
     overflow: 'hidden', 
     alignSelf: 'center',
-    margin: s(20),
-    width: '90%',
+    margin: s(5),
+    width: '100%',
+    height: 400,
   },
   canvas: {
     width: 1000,
@@ -300,7 +295,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: 8,
     padding: 4,
-    zIndex: 10,
   },
   zoomBtn: {
     padding: 8,
