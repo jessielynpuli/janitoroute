@@ -259,7 +259,7 @@ const handleSavePayload = async (bundle: {
         }
             
       } else {
-        alert("Failed to create area: " + result.error?.message);
+        Alert.alert("Failed to create area: " + result.error?.message);
       }
       
       setModalVisible(false);
@@ -267,7 +267,7 @@ const handleSavePayload = async (bundle: {
     }
 
     if (!selectedAreaId) {
-      alert("Please select a target area before modifying the map structure!");
+      Alert.alert("Please select a target area before modifying the map structure!");
       return;
     }
 
@@ -398,7 +398,7 @@ const handleSavePayload = async (bundle: {
             await refreshEdges();
           } else {
             console.error("Failed to link path connection edge:", edgeResult.error?.message);
-            alert("Landmark saved, but routing pathway connection failed to link.");
+            Alert.alert("Landmark saved, but routing pathway connection failed to link.");
           }
         }
 
@@ -409,7 +409,7 @@ const handleSavePayload = async (bundle: {
         console.error("DEBUG - Full API Error: ", result.error);
         const errorMessage = (result.error as any)?.message || JSON.stringify(result.error) || "Unknown error";
 
-        alert("Failed to insert landmark: " + errorMessage);
+        Alert.alert("Failed to insert landmark: " + errorMessage);
       }
     }
 
@@ -548,9 +548,6 @@ else if (bundle.type === 'TRASHBIN') {
     } else if(item.value === 'delete_current') {
     if (!selectedAreaId) return;
 
-      // Quick confirmation alert layout warning
-    const confirmDelete = confirm("Warning: Deleting this Area will permanently wipe out all its nested Landmarks, Wastebins, and Routing Edges. Do you want to continue?");
-    
    // REPLACED OLD WEB CONFIRM WITH NATIVE ALERT:
       Alert.alert(
         "WARNING",

@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import 'react-native-get-random-values';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from 'react-native-size-matters';
+import 'react-native-url-polyfill/auto';
 
 // Component layout extensions
 import AreaDropdown, { DropdownItem } from '@/components/areaDropdown';

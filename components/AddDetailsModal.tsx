@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-
+import React, { useEffect, useState } from 'react';
+import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 //from api
+import { UIWeight } from '@/api/edges/edges_queries';
 import { AreaInput, LandmarkInput, WastebinInput } from '@/api/wastebins/wb_queries';
-import { insertNetworkEdges, WEIGHT_MAP, UIWeight } from '@/api/edges/edges_queries';
 
 export type PopupType = 'LANDMARK' | 'TRASHBIN' | 'AREA' | null;
 
@@ -132,7 +131,7 @@ export const AddDetailsModal: React.FC<AddDetailsModalProps> = ({ visible, type,
     console.log(`Modal package payload confirming coordinates: X=${x}, Y=${y}`);
 
     if (!isEditing && (x === undefined || y === undefined) && type !== 'AREA') {
-      alert("Coordinate placement error! Re-tap the map grid.");
+      Alert.alert("Coordinate placement error! Re-tap the map grid.");
       return;
     }
 
